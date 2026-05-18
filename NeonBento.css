@@ -1,0 +1,88 @@
+/* Neon Bento - Global Design Tokens */
+:root {
+  --nb-bg-obsidian: #0f172a;
+  --nb-bg-card: rgba(15, 23, 42, 0.4);
+  --nb-neon-pink: #ec4899;
+  --nb-neon-cyan: #06b6d4;
+  --nb-neon-amber: #f59e0b;
+  --nb-neon-violet: #8b5cf6;
+  --nb-text-primary: #f1f5f9;
+  --nb-text-secondary: #64748b;
+  --nb-transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  --nb-radius-card: 40px;
+}
+
+.neon-bento-hub {
+  background: transparent !important;
+  color: var(--nb-text-primary);
+}
+
+.bento-card {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--nb-radius-card);
+  backdrop-filter: blur(25px);
+  transition: var(--nb-transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-card:hover {
+  transform: translateY(-8px);
+  background: rgba(15, 23, 42, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 40px 80px -15px rgba(0, 0, 0, 0.6);
+}
+
+/* Card Glaze Accents - Visual Synchronization with Prototype */
+.card-glaze-pink { border-bottom: 2px solid var(--nb-neon-pink); border-right: 1px solid rgba(236, 72, 153, 0.2); }
+.card-glaze-cyan { border-bottom: 2px solid var(--nb-neon-cyan); border-right: 1px solid rgba(6, 182, 212, 0.2); }
+.card-glaze-amber { border-bottom: 2px solid var(--nb-neon-amber); border-right: 1px solid rgba(245, 158, 11, 0.2); }
+.card-glaze-violet { border-bottom: 2px solid var(--nb-neon-violet); border-right: 1px solid rgba(139, 92, 246, 0.2); }
+
+/* Glass Detail Modal */
+.glass-detail-overlay {
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(50px);
+}
+
+.glass-detail-card {
+  background: rgba(10, 15, 25, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 100px rgba(0, 0, 0, 0.8);
+}
+
+.nb-input {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.nb-input:focus {
+  border-color: var(--nb-neon-cyan);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 20px rgba(6, 182, 212, 0.1);
+}
+
+.nb-btn-primary {
+  background: var(--nb-text-primary);
+  color: var(--nb-bg-obsidian);
+  transition: var(--nb-transition);
+}
+
+.nb-btn-primary:hover {
+  transform: scale(1.02);
+  box-shadow: 0 10px 40px rgba(255, 255, 255, 0.1);
+}
+
+/* Custom Scrollbar inherited from global index.css */
+
+/* Base Animations */
+@keyframes neon-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.animate-neon-pulse {
+  animation: neon-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}

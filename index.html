@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>App Salão de Beleza</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@200..800&family=Noto+Sans:wght@300;400;500;600;700&family=Manrope:wght@200..800&family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#f4c025",
+              "primary-dark": "#d4a015",
+              "primary-light": "#F3E5AB",
+              "secondary": "#9c8749",
+              "background-light": "#f8f8f5",
+              "background-dark": "#221e10",
+              "background-subtle": "#fcfbf8",
+              "surface": "#ffffff",
+              "surface-dark": "#2c281b",
+              "gold-100": "#fefce8",
+              "gold-500": "#eab308",
+              "border-gold": "#e8e2ce",
+              "text-main": "#1c180d",
+              "text-secondary": "#9c8749",
+            },
+            fontFamily: {
+              "display": ["Plus Jakarta Sans", "sans-serif"],
+              "body": ["Noto Sans", "sans-serif"],
+              "manrope": ["Manrope", "sans-serif"],
+              "grotesk": ["Space Grotesk", "sans-serif"],
+              "inter": ["Inter", "sans-serif"]
+            },
+            boxShadow: {
+              "gold": "0 10px 30px -5px rgba(244, 192, 37, 0.15)",
+              "gold-hover": "0 20px 40px -5px rgba(244, 192, 37, 0.25)",
+              "glow": "0 0 15px rgba(244, 192, 37, 0.3)",
+              "soft": "0 4px 20px -2px rgba(244, 192, 37, 0.1)",
+            }
+          },
+        },
+      }
+    </script>
+
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+/* --- M10 Agenda Specific Styles --- */
+.m10-agenda-left {
+    background: rgba(14, 14, 26, 0.4);
+    border-right: 1px solid var(--border);
+}
+
+.m10-agenda-center {
+    background: var(--bg);
+}
+
+.m10-agenda-right {
+    background: rgba(14, 14, 26, 0.4);
+    border-left: 1px solid var(--border);
+}
+
+.noir-card {
+    background: rgba(18, 18, 31, 0.8);
+    border: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.noir-card:hover {
+    border-color: var(--pink);
+    transform: translateX(4px);
+    box-shadow: 0 0 20px rgba(255, 20, 147, 0.15);
+}
+
+.now-line {
+    background: var(--pink);
+    box-shadow: 0 0 15px var(--pink);
+}
+
+.now-label {
+    background: var(--pink);
+    color: #000;
+    font-family: 'Bebas Neue';
+    letter-spacing: 1px;
+}
+
+.agenda-pro-tab {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+}
+
+.agenda-pro-tab.active {
+    background: var(--pink-dim);
+    border-color: var(--pink);
+    color: var(--pink);
+}
+
+.agenda-pro-tab:hover:not(.active) {
+    border-color: rgba(255, 20, 147, 0.3);
+    color: var(--white);
+}

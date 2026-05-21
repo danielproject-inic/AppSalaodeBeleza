@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 const SetPassword: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState(false);
@@ -92,25 +94,47 @@ const SetPassword: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
                 <form onSubmit={handleSetPassword} className="space-y-6">
                     <div>
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Nova Senha</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full h-12 bg-white border border-slate-300 rounded-xl px-4 mt-1 outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
-                            placeholder="Mínimo 6 caracteres"
-                            required
-                        />
+                        <div className="relative mt-1">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full h-12 bg-white border border-slate-300 rounded-xl pl-4 pr-12 outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
+                                placeholder="Mínimo 6 caracteres"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none flex items-center justify-center"
+                            >
+                                <span className="material-symbols-outlined select-none text-[20px]">
+                                    {showPassword ? 'visibility_off' : 'visibility'}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                     <div>
                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Confirmar Senha</label>
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full h-12 bg-white border border-slate-300 rounded-xl px-4 mt-1 outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
-                            placeholder="Repita a senha"
-                            required
-                        />
+                        <div className="relative mt-1">
+                            <input
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full h-12 bg-white border border-slate-300 rounded-xl pl-4 pr-12 outline-none focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/10 transition-all font-medium"
+                                placeholder="Repita a senha"
+                                required
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors focus:outline-none flex items-center justify-center"
+                            >
+                                <span className="material-symbols-outlined select-none text-[20px]">
+                                    {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                     <button
                         type="submit"

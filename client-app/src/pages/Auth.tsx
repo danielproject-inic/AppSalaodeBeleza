@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Lock, Phone, ArrowRight, Sparkles } from 'lucide-react';
+import { User, Mail, Lock, Phone, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
 import { useSalon } from '../contexts/SalonContext';
 
 const Auth: React.FC = () => {
@@ -10,6 +10,7 @@ const Auth: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
     const [message, setMessage] = useState({ type: '', text: '' });
@@ -128,13 +129,20 @@ const Auth: React.FC = () => {
                         <div className="relative">
                             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
                             <input
-                                type="password"
+                                type={showPassword ? 'text' : 'password'}
                                 placeholder="SENHA"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-white/60 border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-stone-800 placeholder-stone-400 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all outline-none"
+                                className="w-full bg-white/60 border border-stone-200 rounded-xl py-3 pl-10 pr-12 text-sm font-bold text-stone-800 placeholder-stone-400 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all outline-none"
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors focus:outline-none flex items-center justify-center"
+                            >
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
                         </div>
 
                         {message.text && (

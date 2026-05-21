@@ -8,6 +8,8 @@ interface ForcePasswordChangeProps {
 const ForcePasswordChange: React.FC<ForcePasswordChangeProps> = ({ onComplete }) => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -81,13 +83,22 @@ const ForcePasswordChange: React.FC<ForcePasswordChangeProps> = ({ onComplete })
                             <div className="group relative">
                                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-amber-500 transition-colors">lock</span>
                                 <input
-                                    type="password"
+                                    type={showPassword ? 'text' : 'password'}
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-4 text-white focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                                    className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-12 text-white focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/25 hover:text-amber-550 transition-colors focus:outline-none flex items-center justify-center"
+                                >
+                                    <span className="material-symbols-outlined select-none text-[20px]">
+                                        {showPassword ? 'visibility_off' : 'visibility'}
+                                    </span>
+                                </button>
                             </div>
                         </div>
 
@@ -96,13 +107,22 @@ const ForcePasswordChange: React.FC<ForcePasswordChangeProps> = ({ onComplete })
                             <div className="group relative">
                                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-amber-500 transition-colors">lock_reset</span>
                                 <input
-                                    type="password"
+                                    type={showConfirmPassword ? 'text' : 'password'}
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                     placeholder="••••••••"
-                                    className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-4 text-white focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
+                                    className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-12 text-white focus:ring-2 focus:ring-amber-500/50 outline-none transition-all"
                                     required
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/25 hover:text-amber-550 transition-colors focus:outline-none flex items-center justify-center"
+                                >
+                                    <span className="material-symbols-outlined select-none text-[20px]">
+                                        {showConfirmPassword ? 'visibility_off' : 'visibility'}
+                                    </span>
+                                </button>
                             </div>
                         </div>
 

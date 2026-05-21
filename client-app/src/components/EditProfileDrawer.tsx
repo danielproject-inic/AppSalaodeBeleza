@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Phone, Mail, Lock, Loader2, CheckCircle2, AlertCircle, Camera, ChevronRight, MapPin, ShieldCheck } from 'lucide-react';
+import { X, User, Phone, Mail, Lock, Loader2, CheckCircle2, AlertCircle, Camera, ChevronRight, MapPin, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 interface EditProfileDrawerProps {
     isOpen: boolean;
@@ -18,6 +18,8 @@ const EditProfileDrawer: React.FC<EditProfileDrawerProps> = ({ isOpen, onClose, 
     const [newEmail, setNewEmail] = useState(authUser.email);
     const [newPassword, setNewPassword] = useState('');
     const [currentPassword, setCurrentPassword] = useState('');
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
 
@@ -395,12 +397,19 @@ const EditProfileDrawer: React.FC<EditProfileDrawerProps> = ({ isOpen, onClose, 
                                                 <div className="relative group">
                                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 group-focus-within:text-amber-500 transition-colors" />
                                                     <input 
-                                                        type="password"
+                                                        type={showCurrentPassword ? 'text' : 'password'}
                                                         value={currentPassword} 
                                                         onChange={e => setCurrentPassword(e.target.value)}
                                                         placeholder="••••••••"
-                                                        className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-11 pr-4 text-xs font-bold text-stone-800 outline-none focus:border-stone-500 transition-all shadow-sm"
+                                                        className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-11 pr-12 text-xs font-bold text-stone-800 outline-none focus:border-stone-500 transition-all shadow-sm"
                                                     />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors focus:outline-none flex items-center justify-center"
+                                                    >
+                                                        {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                    </button>
                                                 </div>
                                             </div>
 
@@ -409,12 +418,19 @@ const EditProfileDrawer: React.FC<EditProfileDrawerProps> = ({ isOpen, onClose, 
                                                 <div className="relative group">
                                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 group-focus-within:text-magenta-500 transition-colors" />
                                                     <input 
-                                                        type="password"
+                                                        type={showNewPassword ? 'text' : 'password'}
                                                         value={newPassword} 
                                                         onChange={e => setNewPassword(e.target.value)}
                                                         placeholder="Mínimo 6 caracteres"
-                                                        className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-11 pr-4 text-xs font-bold text-stone-800 outline-none focus:border-stone-500 transition-all shadow-sm"
+                                                        className="w-full bg-white border border-stone-200 rounded-xl py-3 pl-11 pr-12 text-xs font-bold text-stone-800 outline-none focus:border-stone-500 transition-all shadow-sm"
                                                     />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowNewPassword(!showNewPassword)}
+                                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors focus:outline-none flex items-center justify-center"
+                                                    >
+                                                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

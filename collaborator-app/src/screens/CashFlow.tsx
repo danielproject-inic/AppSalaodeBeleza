@@ -159,6 +159,7 @@ const CashFlow: React.FC = () => {
     const [paymentStage, setPaymentStage] = useState<'selection' | 'confirmation'>('selection');
     const [paymentObservation, setPaymentObservation] = useState('');
     const [paymentDiscountPercent, setPaymentDiscountPercent] = useState('');
+    const [cashReceived, setCashReceived] = useState('');
     const [isWalkIn, setIsWalkIn] = useState(false);
     const [tempSelPro, setTempSelPro] = useState<string>('');
     const [tempSelService, setTempSelService] = useState<ServiceFlat | null>(null);
@@ -278,6 +279,7 @@ const CashFlow: React.FC = () => {
         setCartItems([]);
         setSelectedClient(null);
         setServiceSearch('');
+        setCashReceived('');
     };
 
     const handleOpenPayment = (client: ScheduledClient) => {
@@ -358,12 +360,28 @@ const CashFlow: React.FC = () => {
 
         const total = Math.max(0, subtotal - discount);
 
+        if (transMethod === 'Dinheiro') {
+            const received = parseFloat(cashReceived) || 0;
+            if (received < total) {
+                alert('O valor recebido em dinheiro é menor que o total líquido.');
+                return;
+            }
+        }
+
         // Get unique professionals involved
         const involvedProsNames = Array.from(new Set(cartItems.map(i => i.professional || transProf || 'N/A')));
 
         // Find professional IDs if possible (simplified here to use the first one as primary)
         const primaryPro = dbProfessionals.find(p => p.name === involvedProsNames[0]);
         const dbClient = dbClients.find(c => c.name === selectedClient?.name);
+
+        let finalObs = paymentObservation;
+        if (transMethod === 'Dinheiro') {
+            const received = parseFloat(cashReceived) || 0;
+            const change = Math.max(0, received - total);
+            const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
+            finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
+        }
 
         const newTrans: any = {
             type: 'entrada',
@@ -376,7 +394,7 @@ const CashFlow: React.FC = () => {
             professional_id: primaryPro?.id || null,
             discount: discount,
             items_json: cartItems,
-            observation: paymentObservation
+            observation: finalObs
         };
 
         await addTransaction(newTrans);
@@ -1002,6 +1020,24 @@ const CashFlow: React.FC = () => {
                                                         </div>
                                                     )}
 
+                                                    {transMethod === 'Dinheiro' && (
+                                                        <div className="space-y-1">
+                                                            <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Valor Recebido em Dinheiro (Obrigatório)</label>
+                                                            <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                <span className="material-symbols-outlined text-cyan-400 text-lg">payments</span>
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    placeholder="0.00"
+                                                                    value={cashReceived}
+                                                                    onChange={e => setCashReceived(e.target.value)}
+                                                                    className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Observações Internas</label>
                                                         <textarea
@@ -1014,9 +1050,9 @@ const CashFlow: React.FC = () => {
 
                                                     <div className="p-6 rounded-3xl bg-[#0f172a] text-white flex justify-between items-center shadow-2xl border border-white/5 relative overflow-hidden group">
                                                         <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
-                                                        <div className="relative z-10">
+                                                        <div className="relative z-10 w-full pr-16">
                                                             <span className="text-emerald-400 font-black uppercase tracking-[0.2em] text-[10px]">Total Líquido</span>
-                                                            <div className="flex items-center gap-3 mt-1">
+                                                            <div className="flex items-center justify-between mt-1">
                                                                 <span className="text-4xl font-black text-emerald-400" style={{fontFamily:'Bebas Neue'}}>
                                                                     R$ <span className="text-white">{(Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))).toLocaleString('pt-BR')}</span>
                                                                 </span>
@@ -1024,8 +1060,22 @@ const CashFlow: React.FC = () => {
                                                                     <span className="px-2 py-0.5 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded text-[10px] font-black">-{paymentDiscountPercent}% OFF</span>
                                                                 )}
                                                             </div>
+                                                            {transMethod === 'Dinheiro' && (
+                                                                <div className="mt-4 pt-4 border-t border-white/10 space-y-1.5 text-xs text-white/50 animate-in fade-in duration-300">
+                                                                    <div className="flex justify-between">
+                                                                        <span>Dinheiro Recebido:</span>
+                                                                        <span className="font-mono text-white font-bold">{formatCurrency(parseFloat(cashReceived) || 0)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between">
+                                                                        <span>Troco:</span>
+                                                                        <span className="font-mono text-amber-400 font-bold">
+                                                                            {formatCurrency(Math.max(0, (parseFloat(cashReceived) || 0) - (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100)))))}
+                                                                        </span>
+                                                                    </div>
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-cyan-400">
+                                                        <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-cyan-400 absolute right-6 top-1/2 -translate-y-1/2">
                                                             <span className="material-symbols-outlined text-3xl">point_of_sale</span>
                                                         </div>
                                                     </div>
@@ -1038,8 +1088,12 @@ const CashFlow: React.FC = () => {
                                                             Voltar
                                                         </button>
                                                         <button
+                                                            disabled={transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))}
                                                             onClick={handleProcessPayment}
-                                                            className="flex-[2] py-4 rounded-xl bg-cyan-500 text-slate-900 font-black uppercase tracking-widest text-[10px] hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 transition-all active:scale-95"
+                                                            className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
+                                                                ${transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))
+                                                                    ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
+                                                                    : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
                                                         >
                                                             Finalizar e Emitir
                                                         </button>

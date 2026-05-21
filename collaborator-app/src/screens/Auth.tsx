@@ -11,6 +11,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     const { salonName } = useSalon();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<{ title: string, message: string } | null>(null);
@@ -91,13 +92,22 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                                 <div className="group relative">
                                     <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-white/20 group-focus-within:text-[#b45309] transition-colors duration-300">lock</span>
                                     <input
-                                        type="password"
+                                        type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
-                                        className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-4 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20"
+                                        className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-12 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20"
                                         required
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/25 hover:text-[#b45309] transition-colors duration-300 focus:outline-none flex items-center justify-center"
+                                    >
+                                        <span className="material-symbols-outlined select-none text-[20px]">
+                                            {showPassword ? 'visibility_off' : 'visibility'}
+                                        </span>
+                                    </button>
                                 </div>
                             </div>
 

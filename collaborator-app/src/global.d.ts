@@ -5,6 +5,7 @@ declare module 'react' {
     interface IntrinsicElements {
       [elemName: string]: any;
     }
+    type Element = any;
   }
 }
 
@@ -13,6 +14,15 @@ declare module 'react/jsx-runtime' {
     interface IntrinsicElements {
       [elemName: string]: any;
     }
+    type Element = any;
   }
 }
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+    type Element = any;
+  }
+}

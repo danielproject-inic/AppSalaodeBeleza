@@ -342,6 +342,7 @@ const SalonComissoesDashboard = () => {
 
       const groupKey = batch.id;
       const proName = batch.data?.professionalName || (commissions || []).find(c => c.professionalId === proId)?.professionalName || 'Colaborador';
+      const proRole = batch.data?.professionalRole || (commissions || []).find(c => c.professionalId === proId)?.systemRole || '';
       const loteCode = batch.data?.loteCode || `SAB-${(proName).split(' ').filter((n: string) => n.length > 0).map((n: string) => n[0]).join('').toUpperCase().substring(0, 3)}-OLD`;
       const periodLabel = batch.period || batch.data?.periodLabel || 'Período Desconhecido';
 
@@ -351,6 +352,7 @@ const SalonComissoesDashboard = () => {
         loteCode: loteCode,
         label: periodLabel,
         proName: proName,
+        proRole: proRole,
         dateLabel: periodLabel.split(' - ')[1] || periodLabel,
         startTime: '',
         endTime: '',
@@ -484,6 +486,7 @@ const SalonComissoesDashboard = () => {
   const resetLayout = () => {
     if (!wrapperRef.current) return;
     const cW = wrapperRef.current.clientWidth || 1000;
+    const cH = wrapperRef.current.clientHeight || 800;
     const sideW = 300;
     const mainW = cW - sideW;
     const colW = Math.floor((mainW + 2) / 3);
@@ -517,7 +520,8 @@ const SalonComissoesDashboard = () => {
 
     // Histórico expands to full width as requested
     const historyTop = tablesTop + 380 - 1;
-    applyAuto('p-table', 0, historyTop, cW, 374);
+    const historyH = Math.max(300, cH - historyTop);
+    applyAuto('p-table', 0, historyTop, cW, historyH);
 
     // Sidebar: Starts right where p-comm ends
     const sideX = fullMainW - 1;
@@ -1304,8 +1308,8 @@ const SalonComissoesDashboard = () => {
               <table className="w-full">
                 <thead>
                   <tr>
-                    <th className="pl-12 text-left">Lote</th>
-                    <th className="text-left">Colaborador</th>
+                    <th className="text-center">Lote</th>
+                    <th className="text-center">Colaborador</th>
                     <th className="text-center">Data / Horário</th>
                     <th className="text-center">Volume Bruto</th>
                     <th className="text-center text-amber-700">Comissão Paga</th>
@@ -1318,8 +1322,8 @@ const SalonComissoesDashboard = () => {
                       <tr className={`hover:bg-white/[0.02] transition-colors cursor-pointer ${expandedHistMonthId === group.id ? 'bg-amber-700/5' : ''}`}
                         onClick={() => setExpandedHistMonthId(expandedHistMonthId === group.id ? null : group.id)}
                       >
-                        <td className="py-4 pl-12">
-                          <div className="flex items-center gap-3">
+                        <td className="py-4">
+                          <div className="flex items-center justify-center gap-3">
                             <div className={`w-6 h-6 flex items-center justify-center rounded border transition-all ${expandedHistMonthId === group.id ? 'bg-amber-700 border-amber-700 text-black' : 'bg-black/40 border-white/10 text-white/40'}`}>
                               <svg className={`w-3 h-3 transition-transform duration-300 ${expandedHistMonthId === group.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
@@ -1329,8 +1333,20 @@ const SalonComissoesDashboard = () => {
                           </div>
                         </td>
                         <td className="py-4">
-                          <div className="flex flex-col">
-                            <span className="text-[12px] font-black text-white uppercase tracking-wider">{group.proName}</span>
+                          <div className="flex flex-col items-center text-center">
+                            <span className="text-[12px] font-black text-white uppercase tracking-wider">
+                                {group.proName}
+                                <span className="text-[9px] uppercase tracking-widest opacity-60 ml-1">
+                                    ({(() => {
+                                        const role = group.proRole || group.commissions?.[0]?.systemRole || '';
+                                        const r = role.toLowerCase();
+                                        if (r === 'manager' || r === 'gerente') return 'Gerente';
+                                        if (r === 'admin') return 'Admin';
+                                        if (r === 'recepcao' || r === 'reception') return 'Recepção';
+                                        return 'Profissional';
+                                    })()})
+                                </span>
+                            </span>
                             <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest">{group.commissions.length} lançamentos</span>
                           </div>
                         </td>
@@ -1405,21 +1421,21 @@ const SalonComissoesDashboard = () => {
                                               <table className="w-full text-[12px] border-collapse">
                                                 <thead>
                                                   <tr className="border-b border-white/5 text-white/30 uppercase font-black tracking-tighter">
-                                                    <th className="py-2 pl-2 text-left">Serviço</th>
-                                                    <th className="py-2 text-left">Cliente</th>
+                                                    <th className="py-2 pl-2 text-center">Serviço</th>
+                                                    <th className="py-2 text-center">Cliente</th>
                                                     <th className="py-2 text-center">Horário</th>
-                                                    <th className="py-2 text-right">Bruto</th>
-                                                    <th className="py-2 text-right text-amber-700">Comissão</th>
+                                                    <th className="py-2 text-center">Bruto</th>
+                                                    <th className="py-2 text-center text-amber-700">Comissão</th>
                                                   </tr>
                                                 </thead>
                                                 <tbody>
                                                   {day.commissions.map((comm: any, cidx: number) => (
                                                     <tr key={comm.id || cidx} className="border-b border-white/[0.02] last:border-0">
-                                                      <td className="py-2 pl-2 font-bold text-white/70 text-left">{comm.service}</td>
-                                                      <td className="py-2 text-white/40 italic text-left">{comm.client}</td>
+                                                      <td className="py-2 pl-2 font-bold text-white/70 text-center">{comm.service}</td>
+                                                      <td className="py-2 text-white/40 italic text-center">{comm.client}</td>
                                                       <td className="py-2 text-center text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</td>
-                                                      <td className="py-2 text-right text-white/30">{formatBRL(comm.serviceValue)}</td>
-                                                      <td className="py-2 text-right font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
+                                                      <td className="py-2 text-center text-white/30">{formatBRL(comm.serviceValue)}</td>
+                                                      <td className="py-2 text-center font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
                                                     </tr>
                                                   ))}
                                                 </tbody>
@@ -1439,21 +1455,21 @@ const SalonComissoesDashboard = () => {
                                   <table className="w-full text-[12px] border-collapse">
                                     <thead>
                                       <tr className="border-b border-white/5 text-white/30 uppercase font-black tracking-tighter">
-                                        <th className="py-2 pl-2 text-left">Serviço</th>
-                                        <th className="py-2 text-left">Cliente</th>
+                                        <th className="py-2 pl-2 text-center">Serviço</th>
+                                        <th className="py-2 text-center">Cliente</th>
                                         <th className="py-2 text-center">Horário</th>
-                                        <th className="py-2 text-right">Bruto</th>
-                                        <th className="py-2 text-right text-amber-700">Comissão</th>
+                                        <th className="py-2 text-center">Bruto</th>
+                                        <th className="py-2 text-center text-amber-700">Comissão</th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {group.commissions.map((comm: any, cidx: number) => (
                                         <tr key={comm.id || cidx} className="border-b border-white/[0.02] last:border-0">
-                                          <td className="py-2 pl-2 font-bold text-white/70 text-left">{comm.service}</td>
-                                          <td className="py-2 text-white/40 italic text-left">{comm.client}</td>
+                                          <td className="py-2 pl-2 font-bold text-white/70 text-center">{comm.service}</td>
+                                          <td className="py-2 text-white/40 italic text-center">{comm.client}</td>
                                           <td className="py-2 text-center text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</td>
-                                          <td className="py-2 text-right text-white/30">{formatBRL(comm.serviceValue)}</td>
-                                          <td className="py-2 text-right font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
+                                          <td className="py-2 text-center text-white/30">{formatBRL(comm.serviceValue)}</td>
+                                          <td className="py-2 text-center font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -1489,21 +1505,21 @@ const SalonComissoesDashboard = () => {
                                           <table className="w-full text-[12px] border-collapse">
                                             <thead>
                                               <tr className="border-b border-white/5 text-white/30 uppercase font-black tracking-tighter">
-                                                <th className="py-2 pl-2 text-left">Serviço</th>
-                                                <th className="py-2 text-left">Cliente</th>
+                                                <th className="py-2 pl-2 text-center">Serviço</th>
+                                                <th className="py-2 text-center">Cliente</th>
                                                 <th className="py-2 text-center">Horário</th>
-                                                <th className="py-2 text-right">Bruto</th>
-                                                <th className="py-2 text-right text-amber-700">Comissão</th>
+                                                <th className="py-2 text-center">Bruto</th>
+                                                <th className="py-2 text-center text-amber-700">Comissão</th>
                                               </tr>
                                             </thead>
                                             <tbody>
                                               {day.commissions.map((comm: any, cidx: number) => (
                                                 <tr key={comm.id || cidx} className="border-b border-white/[0.02] last:border-0">
-                                                  <td className="py-2 pl-2 font-bold text-white/70 text-left">{comm.service}</td>
-                                                  <td className="py-2 text-white/40 italic text-left">{comm.client}</td>
+                                                  <td className="py-2 pl-2 font-bold text-white/70 text-center">{comm.service}</td>
+                                                  <td className="py-2 text-white/40 italic text-center">{comm.client}</td>
                                                   <td className="py-2 text-center text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</td>
-                                                  <td className="py-2 text-right text-white/30">{formatBRL(comm.serviceValue)}</td>
-                                                  <td className="py-2 text-right font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
+                                                  <td className="py-2 text-center text-white/30">{formatBRL(comm.serviceValue)}</td>
+                                                  <td className="py-2 text-center font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
                                                 </tr>
                                               ))}
                                             </tbody>

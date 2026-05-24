@@ -12,6 +12,7 @@ export interface Commission {
     professionalId: string;
     professionalName: string;
     professionalRole: string;
+    systemRole?: string;
     professionalAvatar: string;
     service: string;
     client: string;
@@ -214,6 +215,7 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                             professionalId: itemPro.id,
                             professionalName: itemPro.name,
                             professionalRole: (itemPro.functions && itemPro.functions[0]) || 'Profissional',
+                            systemRole: (itemPro.functions && itemPro.functions[0]) || 'Profissional',
                             professionalAvatar: itemPro.avatar_url || '',
                             service: item.title,
                             client: client?.name || 'Cliente Externo',

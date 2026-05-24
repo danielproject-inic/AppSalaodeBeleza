@@ -10,14 +10,6 @@ if (!rootElement) {
   throw new Error("Could not find root element");
 }
 
-// Prevent scrolling on number inputs globally
-document.addEventListener('wheel', (event) => {
-  const target = event.target as HTMLInputElement;
-  if (target && target.tagName === 'INPUT' && target.type === 'number') {
-    target.blur();
-  }
-});
-
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>

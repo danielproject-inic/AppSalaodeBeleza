@@ -82,7 +82,7 @@ const safeGetItem = (key: string, defaultVal: string) => {
     }
 };
 
-const CashFlow: React.FC = () => {
+const CashFlow = () => {
     // --- Helpers ---
     const getTodayDate = () => {
         const d = new Date();
@@ -576,7 +576,7 @@ const CashFlow: React.FC = () => {
                                     pattern="[0-9]*"
                                     maxLength={4}
                                     value={pinInput}
-                                    onChange={e => handlePinChange(e.target.value)}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePinChange(e.target.value)}
                                     autoFocus
                                     className="opacity-0 absolute inset-0 cursor-default"
                                 />
@@ -617,7 +617,7 @@ const CashFlow: React.FC = () => {
                             <input
                                 type="date"
                                 value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedDate(e.target.value)}
                                 className="bg-transparent border-none text-xs font-bold text-slate-700 outline-none cursor-pointer"
                             />
                         </div>

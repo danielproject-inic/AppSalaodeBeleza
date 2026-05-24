@@ -38,7 +38,7 @@ const SalonComissoesDashboard: React.FC = () => {
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [historyProId, setHistoryProId] = useState<string>('all');
   const [historyDate, setHistoryDate] = useState<string>(''); // Vazio = Todos
-  const [historyPeriodFilter, setHistoryPeriodFilter] = useState('Mensal');
+  const [historyPeriodFilter, setHistoryPeriodFilter] = useState('Diário');
   const [expandedHistMonthId, setExpandedHistMonthId] = useState<string | null>(null);
   const [expandedHistQuinzenaId, setExpandedHistQuinzenaId] = useState<string | null>(null);
   const [expandedHistDayId, setExpandedHistDayId] = useState<string | null>(null);
@@ -214,14 +214,49 @@ const SalonComissoesDashboard: React.FC = () => {
         const loteCode = b.data?.loteCode || '';
         const periodStr = b.period || '';
         
+        // Usar o campo period (DD/MM/YYYY) para extrair a data real do lote,
+        // pois confirmed_at pode estar em UTC e diferir do dia local.
+        const periodParts = periodStr.split('/');
+        let batchDay = 1, batchMonth = 0, batchYear = 2026;
+        if (periodParts.length === 3) {
+            batchDay = parseInt(periodParts[0], 10);
+            batchMonth = parseInt(periodParts[1], 10) - 1; // 0-indexed
+            batchYear = parseInt(periodParts[2], 10);
+        } else {
+            // Fallback para confirmed_at se o period não está no formato DD/MM/YYYY
+            const batchDateStr = b.confirmed_at || b.created_at || b.data?.requestedAt || '';
+            const batchDate = batchDateStr ? new Date(batchDateStr) : new Date();
+            batchDay = batchDate.getDate();
+            batchMonth = batchDate.getMonth();
+            batchYear = batchDate.getFullYear();
+        }
+
         if (historyPeriodFilter === 'Diário') {
-            return mode === 'Diário' || loteCode.endsWith('-D') || periodStr.split('/').length === 3;
+            if (historyDate) {
+                // historyDate é YYYY-MM-DD, period é DD/MM/YYYY — converter para comparar
+                const [y, m, d] = historyDate.split('-');
+                const historyDateFormatted = `${d}/${m}/${y}`;
+                return periodStr === historyDateFormatted && (mode === 'Diário' || loteCode.endsWith('-D'));
+            }
+            return batchMonth === selectedMonth && batchYear === selectedYear && (mode === 'Diário' || loteCode.endsWith('-D'));
         }
         if (historyPeriodFilter === 'Quinzenal') {
-            return mode === 'Quinzenal' || loteCode.endsWith('-Q') || periodStr.includes('Quinzena');
+            if (historyDate) {
+                const filterDate = new Date(historyDate + 'T12:00:00');
+                const filterMonth = filterDate.getMonth();
+                const filterYear = filterDate.getFullYear();
+                return batchMonth === filterMonth && batchYear === filterYear && (mode === 'Quinzenal' || loteCode.endsWith('-Q'));
+            }
+            return batchMonth === selectedMonth && batchYear === selectedYear && (mode === 'Quinzenal' || loteCode.endsWith('-Q'));
         }
         if (historyPeriodFilter === 'Mensal') {
-            return mode === 'Mensal' || loteCode.endsWith('-M') || (!periodStr.includes('Quinzena') && periodStr.split('/').length < 3);
+            if (historyDate) {
+                const filterDate = new Date(historyDate + 'T12:00:00');
+                const filterMonth = filterDate.getMonth();
+                const filterYear = filterDate.getFullYear();
+                return batchMonth === filterMonth && batchYear === filterYear && (mode === 'Mensal' || loteCode.endsWith('-M'));
+            }
+            return batchMonth === selectedMonth && batchYear === selectedYear && (mode === 'Mensal' || loteCode.endsWith('-M'));
         }
         return true;
     });
@@ -232,19 +267,23 @@ const SalonComissoesDashboard: React.FC = () => {
         const commIds = batch.data?.commissionIds || [];
         const batchComms = (commissions || []).filter(c => commIds.includes(c.id));
         
-        if (batchComms.length === 0) return;
-
         const proId = batch.data?.professionalId;
         if (historyProId !== 'all' && proId !== historyProId) return;
 
-        // Apply any date filter if needed, although batch has a general period
-        if (historyDate && !batchComms.some(c => c.date === historyDate)) return;
+        // Filtrar por data do histórico caso historyDate esteja especificado
+        if (historyDate) {
+            const [y, m, d] = historyDate.split('-');
+            const historyDateFormatted = `${d}/${m}/${y}`;
+            const matchDate = batch.period === historyDateFormatted || batchComms.some((c: any) => c.date === historyDate);
+            if (!matchDate) return;
+        }
 
         const groupKey = batch.id;
-        const proName = batchComms[0]?.professionalName || 'Colaborador';
+        const proName = batch.data?.professionalName || (commissions || []).find(c => c.professionalId === proId)?.professionalName || 'Colaborador';
         const loteCode = batch.data?.loteCode || `SAB-${(proName).split(' ').filter((n: string) => n.length > 0).map((n: string) => n[0]).join('').toUpperCase().substring(0,3)}-OLD`;
-        const periodLabel = batch.period || 'Período Desconhecido';
+        const periodLabel = batch.period || batch.data?.periodLabel || 'Período Desconhecido';
         
+        // Inicializa o grupo com os dados consolidados do próprio lote salvos no banco como fallback de segurança
         groups[groupKey] = {
             id: groupKey,
             loteCode: loteCode,
@@ -253,79 +292,85 @@ const SalonComissoesDashboard: React.FC = () => {
             dateLabel: periodLabel.split(' - ')[1] || periodLabel,
             startTime: '',
             endTime: '',
-            grossValue: 0,
-            commissionValue: 0,
+            grossValue: batch.data?.grossValue || batch.data?.amount || 0,
+            commissionValue: batch.data?.amount || 0,
             commissions: [],
             quinzenasMap: {},
             daysMap: {}
         };
         
         const g = groups[groupKey];
+        
+        if (batchComms.length > 0) {
+            // Se as comissões individuais estão disponíveis em cache local, recalcula os valores exatos e detalha a árvore
+            g.grossValue = 0;
+            g.commissionValue = 0;
 
-        batchComms.forEach(c => {
-            if (!c.date) return;
-            const dateObj = new Date(c.date + 'T12:00:00');
-            if (isNaN(dateObj.getTime())) return;
-            
-            const day = dateObj.getDate();
-            const month = dateObj.getMonth();
-            const year = dateObj.getFullYear();
-            const q = day <= 15 ? 'Q1' : 'Q2';
-
-            if (historyPeriodFilter === 'Diário' && c.startTime) {
-                if (!g.startTime || c.startTime < g.startTime) g.startTime = c.startTime;
-                if (c.endTime && (!g.endTime || c.endTime > g.endTime)) g.endTime = c.endTime;
-            }
-
-            g.grossValue += (c.serviceValue || 0);
-            g.commissionValue += (c.commissionValue || 0);
-            g.commissions.push(c);
-
-            if (historyPeriodFilter === 'Mensal') {
-                if (!g.quinzenasMap[q]) {
-                    g.quinzenasMap[q] = {
-                        id: `${groupKey}-${q}`,
-                        label: q === 'Q1' ? '1ª Quinzena' : '2ª Quinzena',
-                        grossValue: 0,
-                        commissionValue: 0,
-                        daysMap: {}
-                    };
-                }
-                const qz = g.quinzenasMap[q];
-                qz.grossValue += (c.serviceValue || 0);
-                qz.commissionValue += (c.commissionValue || 0);
+            batchComms.forEach(c => {
+                if (!c.date) return;
+                const dateObj = new Date(c.date + 'T12:00:00');
+                if (isNaN(dateObj.getTime())) return;
                 
-                const dKey = c.date;
-                if (!qz.daysMap[dKey]) {
-                    qz.daysMap[dKey] = {
-                        id: `${groupKey}-${q}-${dKey}`,
-                        label: `${String(day).padStart(2, '0')}/${String(month+1).padStart(2, '0')}`,
-                        grossValue: 0,
-                        commissionValue: 0,
-                        commissions: []
-                    };
+                const day = dateObj.getDate();
+                const month = dateObj.getMonth();
+                const year = dateObj.getFullYear();
+                const q = day <= 15 ? 'Q1' : 'Q2';
+
+                if (historyPeriodFilter === 'Diário' && c.startTime) {
+                    if (!g.startTime || c.startTime < g.startTime) g.startTime = c.startTime;
+                    if (c.endTime && (!g.endTime || c.endTime > g.endTime)) g.endTime = c.endTime;
                 }
-                const d = qz.daysMap[dKey];
-                d.grossValue += (c.serviceValue || 0);
-                d.commissionValue += (c.commissionValue || 0);
-                d.commissions.push(c);
-            } else if (historyPeriodFilter === 'Quinzenal') {
-                const dKey = c.date;
-                if (!g.daysMap[dKey]) {
-                    g.daysMap[dKey] = {
-                        id: `${groupKey}-${dKey}`,
-                        label: `${String(day).padStart(2, '0')}/${String(month+1).padStart(2, '0')}`,
-                        grossValue: 0,
-                        commissionValue: 0,
-                        commissions: []
-                    };
+
+                g.grossValue += (c.serviceValue || 0);
+                g.commissionValue += (c.commissionValue || 0);
+                g.commissions.push(c);
+
+                if (historyPeriodFilter === 'Mensal') {
+                    if (!g.quinzenasMap[q]) {
+                        g.quinzenasMap[q] = {
+                            id: `${groupKey}-${q}`,
+                            label: q === 'Q1' ? '1ª Quinzena' : '2ª Quinzena',
+                            grossValue: 0,
+                            commissionValue: 0,
+                            daysMap: {}
+                        };
+                    }
+                    const qz = g.quinzenasMap[q];
+                    qz.grossValue += (c.serviceValue || 0);
+                    qz.commissionValue += (c.commissionValue || 0);
+                    
+                    const dKey = c.date;
+                    if (!qz.daysMap[dKey]) {
+                        qz.daysMap[dKey] = {
+                            id: `${groupKey}-${q}-${dKey}`,
+                            label: `${String(day).padStart(2, '0')}/${String(month+1).padStart(2, '0')}`,
+                            grossValue: 0,
+                            commissionValue: 0,
+                            commissions: []
+                        };
+                    }
+                    const d = qz.daysMap[dKey];
+                    d.grossValue += (c.serviceValue || 0);
+                    d.commissionValue += (c.commissionValue || 0);
+                    d.commissions.push(c);
+                } else if (historyPeriodFilter === 'Quinzenal') {
+                    const dKey = c.date;
+                    if (!g.daysMap[dKey]) {
+                        g.daysMap[dKey] = {
+                            id: `${groupKey}-${dKey}`,
+                            label: `${String(day).padStart(2, '0')}/${String(month+1).padStart(2, '0')}`,
+                            grossValue: 0,
+                            commissionValue: 0,
+                            commissions: []
+                        };
+                    }
+                    const d = g.daysMap[dKey];
+                    d.grossValue += (c.serviceValue || 0);
+                    d.commissionValue += (c.commissionValue || 0);
+                    d.commissions.push(c);
                 }
-                const d = g.daysMap[dKey];
-                d.grossValue += (c.serviceValue || 0);
-                d.commissionValue += (c.commissionValue || 0);
-                d.commissions.push(c);
-            }
-        });
+            });
+        }
     });
 
     return Object.values(groups).map((g: any) => ({
@@ -336,7 +381,7 @@ const SalonComissoesDashboard: React.FC = () => {
         })),
         days: Object.values(g.daysMap).sort((a: any, b: any) => a.id.localeCompare(b.id))
     })).sort((a,b) => b.id.localeCompare(a.id));
-  }, [commissions, batches, historyPeriodFilter, historyProId, historyDate, monthNames]);
+  }, [commissions, batches, historyPeriodFilter, historyProId, historyDate, monthNames, selectedDay, selectedMonth, selectedYear]);
 
 
   const checkedTotals = useMemo(() => {

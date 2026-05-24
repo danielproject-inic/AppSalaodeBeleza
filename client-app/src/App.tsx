@@ -1,3 +1,4 @@
+/// <reference types="react" />
 import { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './pages/Auth';
@@ -46,7 +47,19 @@ function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    // Prevent scrolling on number inputs globally
+    const handleWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLInputElement;
+      if (target && target.tagName === 'INPUT' && target.type === 'number') {
+        target.blur();
+      }
+    };
+    document.addEventListener('wheel', handleWheel);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   const handleLogout = async () => {

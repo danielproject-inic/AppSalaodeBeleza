@@ -12,6 +12,7 @@ export interface Commission {
     professionalId: string;
     professionalName: string;
     professionalRole: string;
+    systemRole: string;
     professionalAvatar: string;
     service: string;
     client: string;
@@ -54,6 +55,7 @@ export interface Professional {
     id: string;
     name: string;
     role: string;
+    systemRole: string;
     avatar: string;
     commissionRate: number;
     totalEarned: number;
@@ -77,14 +79,26 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
             let query = supabase.from('commission_batches').select('*');
             let { data } = await query;
             if (data) {
+                let filteredData = data;
                 if (professionalId) {
-                    data = data.filter(b => (b.data as any)?.professionalId === professionalId);
+                    filteredData = data.filter(b => (b.data as any)?.professionalId === professionalId);
                 }
-                setBatches(data);
+                setBatches(filteredData);
             }
             setLoadingBatches(false);
         };
         fetchBatches();
+
+        const subscription = supabase
+            .channel('public:commission_batches')
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'commission_batches' }, () => {
+                fetchBatches();
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(subscription);
+        };
     }, [professionalId]);
 
     useEffect(() => {
@@ -139,6 +153,7 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                 id: pro.id,
                 name: pro.name,
                 role: (pro.functions && pro.functions[0]) || 'Profissional',
+                systemRole: pro.role || 'profissional',
                 avatar: pro.avatar_url || '',
                 commissionRate: parseFloat(pro.base_commission || '30'),
                 totalEarned: 0,
@@ -202,6 +217,7 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                             professionalId: itemPro.id,
                             professionalName: itemPro.name,
                             professionalRole: (itemPro.functions && itemPro.functions[0]) || 'Profissional',
+                            systemRole: itemPro.role || 'profissional',
                             professionalAvatar: itemPro.avatar_url || '',
                             service: item.title,
                             client: client?.name || 'Cliente Externo',
@@ -426,6 +442,11 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
     const confirmPayment = async (batchId: string) => {
         try {
             setError(null);
+            const batch = batches.find(b => b.id === batchId);
+            if (batch?.status === 'paid') {
+                console.warn("confirmPayment: batch already paid, skipping.");
+                return true;
+            }
             
             // 1. Atualizar o status do lote para 'paid'
             const { error: batchError } = await supabase
@@ -436,7 +457,6 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
             if (batchError) throw batchError;
 
             // 2. Localizar o lote para criar a transação de pagamento de comissão no histórico
-            const batch = batches.find(b => b.id === batchId);
             if (batch && batch.data) {
                 // O gerente já enviou a solicitação de liquidação. Quando o colaborador confirma, 
                 // vamos registrar na tabela transactions como 'Pago' e o valor.
@@ -451,6 +471,117 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
         }
     };
 
+    const requestPayment = async (professionalId: string, amount: number, commissionIds: string[], periodLabel: string, loteCode: string, mode: string) => {
+        try {
+            setError(null);
+
+            // Deduplication guard: check if any of these commissionIds are already in a pending_collaborator or paid batch
+            const alreadyPaidOrRequested = batches.some(b =>
+                (b.status === 'paid' || b.status === 'pending_collaborator') &&
+                b.data?.commissionIds?.some((id: string) => commissionIds.includes(id))
+            );
+            if (alreadyPaidOrRequested) {
+                console.warn("requestPayment: these commissions were already requested or paid, skipping duplicate.");
+                return true; // Return true so UI treats it as success
+            }
+
+            const newId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            const { error: batchError } = await supabase
+                .from('commission_batches')
+                .insert([{
+                    id: newId,
+                    status: 'pending_collaborator',
+                    period: periodLabel,
+                    data: {
+                        professionalId,
+                        amount,
+                        commissionIds,
+                        loteCode,
+                        mode
+                    }
+                }]);
+
+            if (batchError) {
+                console.error("Supabase insert error:", batchError);
+                throw batchError;
+            }
+            return true;
+        } catch (err: any) {
+            console.error("Error in requestPayment:", err);
+            setError(err.message || 'Erro ao solicitar pagamento');
+            return false;
+        }
+    };
+
+    const liquidateDirectly = async (professionalId: string, amount: number, commissionIds: string[], periodLabel: string, loteCode: string, mode: string) => {
+        try {
+            setError(null);
+
+            // Deduplication guard: check if any of these commissionIds are already in a paid batch
+            const alreadyPaid = batches.some(b =>
+                b.status === 'paid' &&
+                b.data?.commissionIds?.some((id: string) => commissionIds.includes(id))
+            );
+            if (alreadyPaid) {
+                console.warn("liquidateDirectly: these commissions were already paid, skipping duplicate.");
+                return true; // Return true so UI treats it as success (already done)
+            }
+
+            const newId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            const { error: batchError } = await supabase
+                .from('commission_batches')
+                .insert([{
+                    id: newId,
+                    status: 'paid',
+                    period: periodLabel,
+                    confirmed_at: new Date().toISOString(),
+                    data: {
+                        professionalId,
+                        amount,
+                        commissionIds,
+                        loteCode,
+                        mode
+                    }
+                }]);
+
+            if (batchError) {
+                console.error("Supabase insert batch error:", batchError);
+                throw batchError;
+            }
+
+            // Pay commissions (creates transaction)
+            const payResult = await payCommissions(professionalId, amount, 'PIX / Transferência (Liquidação Direta)');
+            if (!payResult) {
+                console.warn("payCommissions returned null in liquidateDirectly");
+            }
+
+            // Mark approved advance requests as paid
+            const { error: advError } = await supabase
+                .from('advance_requests')
+                .update({ status: 'paid' })
+                .eq('professional_id', professionalId)
+                .eq('status', 'approved');
+            
+            if (advError) {
+                console.error("Error updating advances for direct liquidation:", advError);
+            }
+
+            return true;
+        } catch (err: any) {
+            console.error("Error in liquidateDirectly:", err);
+            setError(err.message || 'Erro ao liquidar diretamente');
+            return false;
+        }
+    };
+
     return {
         ...commissionsData,
         loading,
@@ -458,6 +589,8 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
         payCommissions,
         executeSmartClosing,
         confirmPayment,
+        requestPayment,
+        liquidateDirectly,
         batches,
         refresh: () => { } // Refresh is handled by useTransactions auto-subscription
     };

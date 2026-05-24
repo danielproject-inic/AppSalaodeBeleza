@@ -34,6 +34,8 @@ interface ServiceItem {
     professional?: string;
     allowedPros?: string[];
     commissionPercentage?: number;
+    startTime?: string;
+    endTime?: string;
 }
 
 interface Bill {
@@ -887,6 +889,7 @@ const CashFlow: React.FC = () => {
                                                                     service: 'Serviço Avulso',
                                                                     professional: '',
                                                                     time: getCurrentTime(),
+                                                                    endTime: getCurrentTime(),
                                                                     amount: 0,
                                                                     status: 'aguardando'
                                                                 });

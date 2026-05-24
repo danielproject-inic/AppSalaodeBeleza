@@ -15,6 +15,7 @@ const SalonComissoesDashboard: React.FC = () => {
     pendingApprovals,
     executeSmartClosing,
     requestPayment,
+    liquidateDirectly,
     batches,
     loading: commissionsLoading
   } = useCommissions(undefined, isAdmin ? undefined : (professionalId || undefined));
@@ -35,6 +36,7 @@ const SalonComissoesDashboard: React.FC = () => {
   const [lotePeriodFilter, setLotePeriodFilter] = useState('Diário');
   const [loteProFilter, setLoteProFilter] = useState('all');
   const [processing, setProcessing] = useState(false);
+  const [liquidatedLoteIds, setLiquidatedLoteIds] = useState<string[]>([]);
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [historyProId, setHistoryProId] = useState<string>('all');
   const [historyDate, setHistoryDate] = useState<string>(''); // Vazio = Todos
@@ -146,7 +148,7 @@ const SalonComissoesDashboard: React.FC = () => {
       let groupKey = '';
       let periodLabel = '';
       let dateStr = c.date;
-      const initials = (c.professionalName || c.professional || 'PR')
+      const initials = (c.professionalName || (c as any).professional || 'PR')
         .split(' ')
         .filter(n => n.length > 0)
         .map(n => n[0])
@@ -158,7 +160,7 @@ const SalonComissoesDashboard: React.FC = () => {
       const yy = String(year).substring(2);
       const pType = lotePeriodFilter === 'Diário' ? 'D' : (lotePeriodFilter === 'Quinzenal' ? 'Q' : 'M');
       const loteCode = `SAB-${initials}-${dd}${mm}${yy}-${pType}`;
-      const proName = (c.professionalName || c.professional || '').substring(0, 3).toUpperCase();
+      const proName = (c.professionalName || (c as any).professional || '').substring(0, 3).toUpperCase();
       const q = day <= 15 ? 'Q1' : 'Q2';
 
       if (lotePeriodFilter === 'Diário') {
@@ -177,7 +179,8 @@ const SalonComissoesDashboard: React.FC = () => {
           id: groupKey,
           loteCode,
           professionalId: c.professionalId,
-          professionalName: c.professionalName || c.professional || '',
+          professionalName: c.professionalName || (c as any).professional || '',
+          professionalRole: c.systemRole || 'profissional',
           periodLabel,
           grossValue: 0,
           netValue: 0,
@@ -255,27 +258,67 @@ const SalonComissoesDashboard: React.FC = () => {
     });
 
     result.sort((a, b) => b.id.localeCompare(a.id));
-    return Object.values(groups);
-  }, [commissions, lotePeriodFilter, loteProFilter]);
+
+    // Optimistic removal: exclude lotes that were just liquidated and waiting for real-time sync
+    if (liquidatedLoteIds.length > 0) {
+      return result.filter(g => !liquidatedLoteIds.includes(g.id));
+    }
+    return result;
+  }, [commissions, lotePeriodFilter, loteProFilter, liquidatedLoteIds]);
 
   const groupedHistory = useMemo(() => {
-    // Pegar todos os lotes que esto pagos ou pendentes
+    // Pegar todos os lotes que estão pagos ou pendentes
     const validBatches = (batches || []).filter((b: any) => b.status === 'paid' || b.status === 'pending_collaborator');
 
-    // Filtrar pelo perodo selecionado
+    // Filtrar pelo período selecionado
     const filteredBatches = validBatches.filter((b: any) => {
       const mode = b.data?.mode;
       const loteCode = b.data?.loteCode || '';
       const periodStr = b.period || '';
 
+      // Usar o campo period (DD/MM/YYYY) para extrair a data real do lote,
+      // pois confirmed_at pode estar em UTC e diferir do dia local.
+      const periodParts = periodStr.split('/');
+      let batchDay = 1, batchMonth = 0, batchYear = 2026;
+      if (periodParts.length === 3) {
+        batchDay = parseInt(periodParts[0], 10);
+        batchMonth = parseInt(periodParts[1], 10) - 1; // 0-indexed
+        batchYear = parseInt(periodParts[2], 10);
+      } else {
+        // Fallback para confirmed_at se o period não está no formato DD/MM/YYYY
+        const batchDateStr = b.confirmed_at || b.created_at || b.data?.requestedAt || '';
+        const batchDate = batchDateStr ? new Date(batchDateStr) : new Date();
+        batchDay = batchDate.getDate();
+        batchMonth = batchDate.getMonth();
+        batchYear = batchDate.getFullYear();
+      }
+
       if (historyPeriodFilter === 'Diário') {
-        return mode === 'Diário' || loteCode.endsWith('-D') || periodStr.split('/').length === 3;
+        if (historyDate) {
+          // historyDate é YYYY-MM-DD, period é DD/MM/YYYY — converter para comparar
+          const [y, m, d] = historyDate.split('-');
+          const historyDateFormatted = `${d}/${m}/${y}`;
+          return periodStr === historyDateFormatted && (mode === 'Diário' || loteCode.endsWith('-D'));
+        }
+        return batchMonth === selectedMonth && batchYear === selectedYear && (mode === 'Diário' || loteCode.endsWith('-D'));
       }
       if (historyPeriodFilter === 'Quinzenal') {
-        return mode === 'Quinzenal' || loteCode.endsWith('-Q') || periodStr.includes('Quinzena');
+        if (historyDate) {
+          const filterDate = new Date(historyDate + 'T12:00:00');
+          const filterMonth = filterDate.getMonth();
+          const filterYear = filterDate.getFullYear();
+          return batchMonth === filterMonth && batchYear === filterYear && (mode === 'Quinzenal' || loteCode.endsWith('-Q'));
+        }
+        return batchMonth === selectedMonth && batchYear === selectedYear && (mode === 'Quinzenal' || loteCode.endsWith('-Q'));
       }
       if (historyPeriodFilter === 'Mensal') {
-        return mode === 'Mensal' || loteCode.endsWith('-M') || (!periodStr.includes('Quinzena') && periodStr.split('/').length < 3);
+        if (historyDate) {
+          const filterDate = new Date(historyDate + 'T12:00:00');
+          const filterMonth = filterDate.getMonth();
+          const filterYear = filterDate.getFullYear();
+          return batchMonth === filterMonth && batchYear === filterYear && (mode === 'Mensal' || loteCode.endsWith('-M'));
+        }
+        return batchMonth === selectedMonth && batchYear === selectedYear && (mode === 'Mensal' || loteCode.endsWith('-M'));
       }
       return true;
     });
@@ -286,19 +329,23 @@ const SalonComissoesDashboard: React.FC = () => {
       const commIds = batch.data?.commissionIds || [];
       const batchComms = (commissions || []).filter(c => commIds.includes(c.id));
 
-      if (batchComms.length === 0) return;
-
       const proId = batch.data?.professionalId;
       if (historyProId !== 'all' && proId !== historyProId) return;
 
-      // Apply any date filter if needed, although batch has a general period
-      if (historyDate && !batchComms.some(c => c.date === historyDate)) return;
+      // Filtrar por data do histórico caso historyDate esteja especificado
+      if (historyDate) {
+        const [y, m, d] = historyDate.split('-');
+        const historyDateFormatted = `${d}/${m}/${y}`;
+        const matchDate = batch.period === historyDateFormatted || batchComms.some((c: any) => c.date === historyDate);
+        if (!matchDate) return;
+      }
 
       const groupKey = batch.id;
-      const proName = batchComms[0]?.professionalName || 'Colaborador';
+      const proName = batch.data?.professionalName || (commissions || []).find(c => c.professionalId === proId)?.professionalName || 'Colaborador';
       const loteCode = batch.data?.loteCode || `SAB-${(proName).split(' ').filter((n: string) => n.length > 0).map((n: string) => n[0]).join('').toUpperCase().substring(0, 3)}-OLD`;
-      const periodLabel = batch.period || 'Período Desconhecido';
+      const periodLabel = batch.period || batch.data?.periodLabel || 'Período Desconhecido';
 
+      // Inicializa o grupo com os dados consolidados do próprio lote salvos no banco como fallback de segurança
       groups[groupKey] = {
         id: groupKey,
         loteCode: loteCode,
@@ -307,8 +354,8 @@ const SalonComissoesDashboard: React.FC = () => {
         dateLabel: periodLabel.split(' - ')[1] || periodLabel,
         startTime: '',
         endTime: '',
-        grossValue: 0,
-        commissionValue: 0,
+        grossValue: batch.data?.grossValue || batch.data?.amount || 0,
+        commissionValue: batch.data?.amount || 0,
         commissions: [],
         quinzenasMap: {},
         daysMap: {}
@@ -316,70 +363,76 @@ const SalonComissoesDashboard: React.FC = () => {
 
       const g = groups[groupKey];
 
-      batchComms.forEach(c => {
-        if (!c.date) return;
-        const dateObj = new Date(c.date + 'T12:00:00');
-        if (isNaN(dateObj.getTime())) return;
+      if (batchComms.length > 0) {
+        // Se as comissões individuais estão disponíveis em cache local, recalcula os valores exatos e detalha a árvore
+        g.grossValue = 0;
+        g.commissionValue = 0;
 
-        const day = dateObj.getDate();
-        const month = dateObj.getMonth();
-        const year = dateObj.getFullYear();
-        const q = day <= 15 ? 'Q1' : 'Q2';
+        batchComms.forEach(c => {
+          if (!c.date) return;
+          const dateObj = new Date(c.date + 'T12:00:00');
+          if (isNaN(dateObj.getTime())) return;
 
-        if (historyPeriodFilter === 'Diário' && c.startTime) {
-          if (!g.startTime || c.startTime < g.startTime) g.startTime = c.startTime;
-          if (c.endTime && (!g.endTime || c.endTime > g.endTime)) g.endTime = c.endTime;
-        }
+          const day = dateObj.getDate();
+          const month = dateObj.getMonth();
+          const year = dateObj.getFullYear();
+          const q = day <= 15 ? 'Q1' : 'Q2';
 
-        g.grossValue += (c.serviceValue || 0);
-        g.commissionValue += (c.commissionValue || 0);
-        g.commissions.push(c);
-
-        if (historyPeriodFilter === 'Mensal') {
-          if (!g.quinzenasMap[q]) {
-            g.quinzenasMap[q] = {
-              id: `${groupKey}-${q}`,
-              label: q === 'Q1' ? '1ª Quinzena' : '2ª Quinzena',
-              grossValue: 0,
-              commissionValue: 0,
-              daysMap: {}
-            };
+          if (historyPeriodFilter === 'Diário' && c.startTime) {
+            if (!g.startTime || c.startTime < g.startTime) g.startTime = c.startTime;
+            if (c.endTime && (!g.endTime || c.endTime > g.endTime)) g.endTime = c.endTime;
           }
-          const qz = g.quinzenasMap[q];
-          qz.grossValue += (c.serviceValue || 0);
-          qz.commissionValue += (c.commissionValue || 0);
 
-          const dKey = c.date;
-          if (!qz.daysMap[dKey]) {
-            qz.daysMap[dKey] = {
-              id: `${groupKey}-${q}-${dKey}`,
-              label: `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`,
-              grossValue: 0,
-              commissionValue: 0,
-              commissions: []
-            };
+          g.grossValue += (c.serviceValue || 0);
+          g.commissionValue += (c.commissionValue || 0);
+          g.commissions.push(c);
+
+          if (historyPeriodFilter === 'Mensal') {
+            if (!g.quinzenasMap[q]) {
+              g.quinzenasMap[q] = {
+                id: `${groupKey}-${q}`,
+                label: q === 'Q1' ? '1ª Quinzena' : '2ª Quinzena',
+                grossValue: 0,
+                commissionValue: 0,
+                daysMap: {}
+              };
+            }
+            const qz = g.quinzenasMap[q];
+            qz.grossValue += (c.serviceValue || 0);
+            qz.commissionValue += (c.commissionValue || 0);
+
+            const dKey = c.date;
+            if (!qz.daysMap[dKey]) {
+              qz.daysMap[dKey] = {
+                id: `${groupKey}-${q}-${dKey}`,
+                label: `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`,
+                grossValue: 0,
+                commissionValue: 0,
+                commissions: []
+              };
+            }
+            const d = qz.daysMap[dKey];
+            d.grossValue += (c.serviceValue || 0);
+            d.commissionValue += (c.commissionValue || 0);
+            d.commissions.push(c);
+          } else if (historyPeriodFilter === 'Quinzenal') {
+            const dKey = c.date;
+            if (!g.daysMap[dKey]) {
+              g.daysMap[dKey] = {
+                id: `${groupKey}-${dKey}`,
+                label: `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`,
+                grossValue: 0,
+                commissionValue: 0,
+                commissions: []
+              };
+            }
+            const d = g.daysMap[dKey];
+            d.grossValue += (c.serviceValue || 0);
+            d.commissionValue += (c.commissionValue || 0);
+            d.commissions.push(c);
           }
-          const d = qz.daysMap[dKey];
-          d.grossValue += (c.serviceValue || 0);
-          d.commissionValue += (c.commissionValue || 0);
-          d.commissions.push(c);
-        } else if (historyPeriodFilter === 'Quinzenal') {
-          const dKey = c.date;
-          if (!g.daysMap[dKey]) {
-            g.daysMap[dKey] = {
-              id: `${groupKey}-${dKey}`,
-              label: `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}`,
-              grossValue: 0,
-              commissionValue: 0,
-              commissions: []
-            };
-          }
-          const d = g.daysMap[dKey];
-          d.grossValue += (c.serviceValue || 0);
-          d.commissionValue += (c.commissionValue || 0);
-          d.commissions.push(c);
-        }
-      });
+        });
+      }
     });
 
     return Object.values(groups).map((g: any) => ({
@@ -390,7 +443,7 @@ const SalonComissoesDashboard: React.FC = () => {
       })),
       days: Object.values(g.daysMap).sort((a: any, b: any) => a.id.localeCompare(b.id))
     })).sort((a, b) => b.id.localeCompare(a.id));
-  }, [commissions, batches, historyPeriodFilter, historyProId, historyDate]);
+  }, [commissions, batches, historyPeriodFilter, historyProId, historyDate, monthNames, selectedDay, selectedMonth, selectedYear]);
 
 
   const checkedTotals = useMemo(() => {
@@ -633,39 +686,109 @@ const SalonComissoesDashboard: React.FC = () => {
   }, []);
 
   const handleLiquidation = async () => {
+    if (processing) return;
     setProcessing(true);
+    // Fecha o modal imediatamente para não travar a UI
+    setIsModalOpen(false);
+
+    // Immediately capture the lote(s) to process and clear UI selection
+    let lotesToProcess: any[] = [];
+    if (selectedLote) {
+      lotesToProcess = [selectedLote];
+      setCheckedBatchIds(prev => prev.filter(id => id !== selectedLote.id));
+    } else {
+      lotesToProcess = checkedBatchIds
+        .map(id => groupedLotes.find(x => x.id === id))
+        .filter(Boolean);
+      setCheckedBatchIds([]);
+    }
+
+    // Optimistically hide these lotes from the table immediately
+    const idsToHide = lotesToProcess.map((l: any) => l.id);
+    setLiquidatedLoteIds(prev => [...prev, ...idsToHide]);
+
     try {
-      if (selectedLote) {
-        // Solicitar pagamento individual
-        const commIds = selectedLote.commissions.map((c: any) => c.id);
-        const success = await requestPayment(selectedLote.professionalId, selectedLote.netValue, commIds, selectedLote.periodLabel, selectedLote.loteCode, lotePeriodFilter);
-        if (success) {
-          setToast({ message: 'Solicitação enviada! Notifique o colaborador.', type: 'success' });
-          setCheckedBatchIds([]);
-          setIsModalOpen(false);
-        } else {
-          setToast({ message: 'Erro ao solicitar pagamento.', type: 'error' });
-        }
-      } else {
-        // Solicitar pagamento coletivo (Smart Closing)
-        // Neste caso, vamos criar múltiplos lotes individuais
-        let anySuccess = false;
-        for (const id of checkedBatchIds) {
-          const lote = groupedLotes.find(l => l.id === id);
-          if (lote) {
-            const commIds = lote.commissions.map((c: any) => c.id);
-            const s = await requestPayment(lote.professionalId, lote.netValue, commIds, lote.periodLabel, lote.loteCode, lotePeriodFilter);
-            if (s) anySuccess = true;
-          }
-        }
-        if (anySuccess) {
-          setToast({ message: 'Solicitações enviadas com sucesso!', type: 'success' });
-          setCheckedBatchIds([]);
-          setIsModalOpen(false);
-        }
+      let anySuccess = false;
+      for (const lote of lotesToProcess) {
+        const commIds = lote.commissions.map((c: any) => c.id);
+        const s = await requestPayment(
+          lote.professionalId,
+          lote.netValue,
+          commIds,
+          lote.periodLabel,
+          lote.loteCode,
+          lotePeriodFilter
+        );
+        if (s) anySuccess = true;
+      }
+      
+      setToast({
+        message: anySuccess 
+          ? (lotesToProcess.length === 1 ? 'Solicitação enviada! Notifique o colaborador.' : 'Solicitações enviadas com sucesso!')
+          : 'Erro ao enviar solicitações.',
+        type: anySuccess ? 'success' : 'error'
+      });
+
+      if (!anySuccess) {
+        setLiquidatedLoteIds(prev => prev.filter(id => !idsToHide.includes(id)));
       }
     } catch (e) {
       setToast({ message: 'Erro ao processar fechamento.', type: 'error' });
+      setLiquidatedLoteIds(prev => prev.filter(id => !idsToHide.includes(id)));
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleDirectLiquidation = async (lote: any) => {
+    if (processing) return; // Prevent double-clicks
+    setProcessing(true);
+
+    // Immediately capture the lote(s) to process and clear UI selection
+    let lotesToProcess: any[] = [];
+    if (lote) {
+      lotesToProcess = [lote];
+      setCheckedBatchIds(prev => prev.filter(id => id !== lote.id));
+    } else {
+      // Capture current checked lotes before clearing
+      lotesToProcess = checkedBatchIds
+        .map(id => groupedLotes.find(x => x.id === id))
+        .filter(Boolean);
+      setCheckedBatchIds([]);
+    }
+
+    // Optimistically hide these lotes from the table immediately
+    const idsToHide = lotesToProcess.map((l: any) => l.id);
+    setLiquidatedLoteIds(prev => [...prev, ...idsToHide]);
+
+    try {
+      let anySuccess = false;
+      for (const l of lotesToProcess) {
+        const commIds = l.commissions.map((c: any) => c.id);
+        const s = await liquidateDirectly(
+          l.professionalId,
+          l.netValue,
+          commIds,
+          l.periodLabel,
+          l.loteCode,
+          lotePeriodFilter
+        );
+        if (s) anySuccess = true;
+      }
+      setToast({
+        message: anySuccess
+          ? (lotesToProcess.length === 1 ? 'Liquidação direta realizada e enviada para o Histórico!' : 'Liquidação direta coletiva realizada com sucesso!')
+          : 'Erro ao processar liquidação.',
+        type: anySuccess ? 'success' : 'error'
+      });
+      if (!anySuccess) {
+        // Rollback optimistic hide if nothing succeeded
+        setLiquidatedLoteIds(prev => prev.filter(id => !idsToHide.includes(id)));
+      }
+    } catch (e) {
+      setToast({ message: 'Erro ao processar fechamento direto.', type: 'error' });
+      // Rollback optimistic hide
+      setLiquidatedLoteIds(prev => prev.filter(id => !idsToHide.includes(id)));
     } finally {
       setProcessing(false);
     }
@@ -922,7 +1045,17 @@ const SalonComissoesDashboard: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-3 py-3 text-muted text-center italic">{lote.periodLabel}</td>
-                        <td className={`px-3 py-3 font-bold text-center ${focusedBatchId === lote.id ? 'text-amber-700' : 'text-amber-600/80'}`}>{lote.professionalName}</td>
+                        <td className={`px-3 py-3 font-bold text-center ${focusedBatchId === lote.id ? 'text-amber-700' : 'text-amber-600/80'}`}>
+                          {lote.professionalName} <span className="text-[9px] uppercase tracking-widest opacity-60">
+                            ({(() => {
+                              const r = (lote.professionalRole || '').toLowerCase();
+                              if (r === 'manager' || r === 'gerente') return 'Gerente';
+                              if (r === 'admin') return 'Admin';
+                              if (r === 'recepcao' || r === 'reception') return 'Recepção';
+                              return 'Profissional';
+                            })()})
+                          </span>
+                        </td>
                         <td className="px-3 py-3 text-center text-muted">{formatBRL(lote.grossValue)}</td>
                         <td className="px-3 py-3 text-center text-red-500">{lote.adjustments !== 0 ? `- ${formatBRL(Math.abs(lote.adjustments))}` : '—'}</td>
                         <td className={`px-3 py-3 text-center font-bold ${focusedBatchId === lote.id ? 'text-amber-700' : 'text-white'}`}>{formatBRL(lote.netValue)}</td>
@@ -1422,10 +1555,21 @@ const SalonComissoesDashboard: React.FC = () => {
                       <div className="bc-footer border-t border-white/5 mt-6 pt-4">
                         <div className="bc-note text-[10px] text-muted mb-4">Saldo líquido de comissões confirmadas</div>
                         <button
-                          className="pay-btn bg-amber-700 text-black font-bold uppercase py-3 tracking-widest text-[10px] transition-all duration-300 shadow-[0_0_20px_rgba(255,20,147,0.4)] border-transparent hover:scale-105"
-                          onClick={() => { setSelectedLote(lote); setIsModalOpen(true); }}
+                          className={`pay-btn font-bold uppercase py-3 tracking-widest text-[10px] transition-all duration-300 border-transparent ${processing ? 'bg-amber-700/50 text-black/50 cursor-wait' : 'bg-amber-700 text-black shadow-[0_0_20px_rgba(255,20,147,0.4)] hover:scale-105'}`}
+                          disabled={processing}
+                          onClick={() => {
+                            const proStat = professionalsStats.find(p => p.id === lote.professionalId);
+                            const isGerente = proStat?.systemRole?.toLowerCase() === 'gerente' || proStat?.systemRole?.toLowerCase() === 'admin' || proStat?.systemRole?.toLowerCase() === 'manager';
+
+                            if (isGerente) {
+                              handleDirectLiquidation(lote);
+                            } else {
+                              setSelectedLote(lote);
+                              setIsModalOpen(true);
+                            }
+                          }}
                         >
-                          ⚡ Liquidar Agora
+                          {processing ? 'PROCESSANDO...' : '⚡ Liquidar Agora'}
                         </button>
                       </div>
                     </div>
@@ -1454,11 +1598,26 @@ const SalonComissoesDashboard: React.FC = () => {
                         : 'Clique nos checkboxes da tabela para somar os valores'}
                     </div>
                     <button
-                      className={`pay-btn font-bold uppercase py-3 tracking-widest text-[10px] transition-all duration-300 ${checkedBatchIds.length > 0 ? 'bg-amber-700 text-black shadow-[0_0_20px_rgba(255,20,147,0.4)] border-transparent hover:scale-105' : 'bg-transparent text-muted border-white/10 opacity-50 cursor-not-allowed'}`}
-                      onClick={() => { if (checkedBatchIds.length > 0) { setSelectedLote(null); setIsModalOpen(true); } }}
-                      disabled={checkedBatchIds.length === 0}
+                      className={`pay-btn font-bold uppercase py-3 tracking-widest text-[10px] transition-all duration-300 ${checkedBatchIds.length > 0 && !processing ? 'bg-amber-700 text-black shadow-[0_0_20px_rgba(255,20,147,0.4)] border-transparent hover:scale-105' : 'bg-transparent text-muted border-white/10 opacity-50 cursor-not-allowed'}`}
+                      onClick={() => {
+                        if (checkedBatchIds.length > 0 && !processing) {
+                          const allGerentes = checkedBatchIds.every(id => {
+                            const lote = groupedLotes.find((l: any) => l.id === id);
+                            const proStat = lote ? professionalsStats.find(p => p.id === lote.professionalId) : null;
+                            return proStat?.systemRole?.toLowerCase() === 'gerente' || proStat?.systemRole?.toLowerCase() === 'admin' || proStat?.systemRole?.toLowerCase() === 'manager';
+                          });
+
+                          if (allGerentes) {
+                            handleDirectLiquidation(null);
+                          } else {
+                            setSelectedLote(null);
+                            setIsModalOpen(true);
+                          }
+                        }
+                      }}
+                      disabled={checkedBatchIds.length === 0 || processing}
                     >
-                      {checkedBatchIds.length > 1 ? '⚡ Fechamento Inteligente' : '⚡ Aguardando Seleção'}
+                      {processing ? 'PROCESSANDO...' : (checkedBatchIds.length > 1 ? '⚡ Fechamento Inteligente' : '⚡ Aguardando Seleção')}
                     </button>
                   </div>
                 </div>

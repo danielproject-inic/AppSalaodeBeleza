@@ -1,3 +1,4 @@
+/// <reference types="react" />
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './screens/Auth';
@@ -40,7 +41,19 @@ const App: React.FC = () => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    // Prevent scrolling on number inputs globally
+    const handleWheel = (event: WheelEvent) => {
+      const target = event.target as HTMLInputElement;
+      if (target && target.tagName === 'INPUT' && target.type === 'number') {
+        target.blur();
+      }
+    };
+    document.addEventListener('wheel', handleWheel);
+
+    return () => {
+      subscription.unsubscribe();
+      document.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   useEffect(() => {

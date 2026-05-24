@@ -313,10 +313,10 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
         filteredAppointments.forEach(a => {
             if (a.service_id && a.status !== 'cancelado') counts[a.service_id] = (counts[a.service_id] || 0) + 1;
         });
-        const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 6);
+        const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
         const maxCount = Math.max(...sorted.map(s => s[1]), 1);
         
-        const colors = ['#0ea5e9', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6', '#c084fc'];
+        const colors = ['#0ea5e9', '#ec4899', '#f59e0b', '#10b981', '#8b5cf6'];
         
         const mapped = sorted.map((s, idx) => {
             const svc = dbServices.find(srv => srv.id === s[0]);
@@ -673,21 +673,21 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                             <span className="material-symbols-outlined text-[#b45309] text-[18px] drop-shadow-[0_0_8px_rgba(180,83,9,0.3)]">bar_chart</span>
                                             <h3 className="text-[12px] font-black text-white tracking-[0.1em] uppercase">Serviços Mais Vendidos</h3>
                                         </div>
-                                        <div className="h-24 flex items-end justify-around gap-3 px-4 pb-0 relative bg-black/20 backdrop-blur-sm rounded-xl overflow-hidden shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] border border-white/5">
+                                        <div className="h-24 grid grid-cols-5 items-end gap-3 px-4 pb-0 relative bg-black/20 backdrop-blur-sm rounded-xl overflow-hidden shadow-[inset_0_2px_10px_rgba(0,0,0,0.5)] border border-white/5">
                                             <div className="absolute inset-0 bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.03)_50%,transparent_100%)] pointer-events-none animate-pulse"></div>
                                             {topServices.length > 0 ? topServices.map((item, i) => (
-                                                <div key={i} className="flex-1 h-full flex flex-col justify-end relative z-10 mx-px group/bar">
-                                                    <div className="w-full relative transition-all duration-300 group-hover/bar:scale-x-110 group-hover/bar:brightness-125 rounded-t-lg" style={{ height: `${item.h}%`, background: `linear-gradient(180deg, ${item.color}99, ${item.color})`, borderTop: '2px solid rgba(255,255,255,0.6)', boxShadow: `0 0 15px ${item.color}44, inset 0 1px 2px rgba(255,255,255,0.4)` }}>
+                                                <div key={i} className="w-full h-full flex flex-col justify-end relative z-10 mx-px group/bar items-center">
+                                                    <div className="w-6 sm:w-8 relative transition-all duration-300 group-hover/bar:scale-y-105 group-hover/bar:brightness-125 rounded-t-lg" style={{ height: `${item.h}%`, background: `linear-gradient(180deg, ${item.color}99, ${item.color})`, borderTop: '2px solid rgba(255,255,255,0.6)', boxShadow: `0 0 15px ${item.color}44, inset 0 1px 2px rgba(255,255,255,0.4)`, transformOrigin: 'bottom' }}>
                                                         <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10 opacity-30"></div>
                                                         <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-[#000]/80 backdrop-blur-md text-white text-[10px] font-black px-2 py-0.5 rounded-full opacity-0 group-hover/bar:opacity-100 transition-all border border-white/10 shadow-lg pointer-events-none">{item.h.toFixed(0)}%</div>
                                                     </div>
                                                 </div>
-                                            )) : <div className="absolute inset-0 flex items-center justify-center opacity-40 text-xs font-bold text-[#222]">Sem dados</div>}
+                                            )) : <div className="col-span-5 absolute inset-0 flex items-center justify-center opacity-40 text-xs font-bold text-[#222]">Sem dados</div>}
                                         </div>
-                                        <div className="flex justify-around gap-3 px-4 mt-2 mb-3">
+                                        <div className="grid grid-cols-5 gap-3 px-4 mt-2 mb-3">
                                             {topServices.map((m,i) => (
-                                                <div key={i} className="flex-1 mx-px relative h-20">
-                                                    <span className="text-[10px] font-black tracking-tighter whitespace-nowrap text-white/40 uppercase" style={{ transform: 'rotate(-83deg)', transformOrigin: 'top right' }}>
+                                                <div key={i} className="w-full relative h-10 flex justify-center items-start pt-1">
+                                                    <span className="text-[9px] font-black tracking-tighter text-white/40 uppercase text-center leading-[1.1] line-clamp-2">
                                                         {m.label}
                                                     </span>
                                                 </div>

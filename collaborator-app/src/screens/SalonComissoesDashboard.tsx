@@ -4,7 +4,7 @@ import { useServices } from '../hooks/useServices';
 import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
 import './M10Canvas.css';
 
-const SalonComissoesDashboard: React.FC = () => {
+const SalonComissoesDashboard = () => {
   const { role, professionalId, hasAccess, loading: userLoading } = useCurrentUserRef();
   const canViewAll = role === 'admin' || role === 'manager' || hasAccess('team_view_all');
   

@@ -1,4 +1,4 @@
-/// <reference types="react" />
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './screens/Auth';
@@ -24,9 +24,10 @@ import ForcePasswordChange from './components/ForcePasswordChange';
 import { useCurrentTime } from './hooks/useCurrentTime';
 import { useSalonConfig } from './hooks/useSalonConfig';
 import { useCurrentUserRef, ModuleKey } from './hooks/useCurrentUserRef';
+import { useAutoLogout } from './hooks/useAutoLogout';
 
 // Supabase state is now handled internally by child components via hooks
-const App: React.FC = () => {
+const App = () => {
   const [session, setSession] = useState<any>(null);
   const [currentScreen, setCurrentScreen] = useState<string>('overview');
   const { formattedTime, formattedDate } = useCurrentTime();
@@ -73,6 +74,9 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
+
+  // Logout automático por inatividade ou suspensão do SO (15 minutos)
+  useAutoLogout(handleLogout, 15, !!session);
 
   const renderScreen = () => {
     if (permissionsLoading || configLoading) return (

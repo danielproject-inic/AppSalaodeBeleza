@@ -34,6 +34,10 @@ interface ServiceItem {
     professional?: string;
     allowedPros?: string[];
     commissionPercentage?: number;
+    startTime?: string;
+    endTime?: string;
+    scheduledDate?: string;
+    servicoIniciadoAt?: string;
 }
 
 interface Bill {
@@ -292,7 +296,11 @@ const CashFlow = () => {
             price: client.amount,
             professional: client.professional,
             allowedPros: serviceDetails?.allowedPros, // Pass allowed pros for the scheduled service
-            commissionPercentage: serviceDetails?.commissionPercentage || 0
+            commissionPercentage: serviceDetails?.commissionPercentage || 0,
+            startTime: client.time,
+            endTime: client.endTime,
+            scheduledDate: client.date,
+            servicoIniciadoAt: client.servicoIniciadoAt
         }]);
         setTransProf(client.professional); // Set summary professional
         setPaymentStage('selection'); // Reset stage
@@ -383,6 +391,11 @@ const CashFlow = () => {
             finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
         }
 
+        const finalCartItems = cartItems.map(item => ({
+            ...item,
+            servicoTerminadoAt: new Date().toISOString()
+        }));
+
         const newTrans: any = {
             type: 'entrada',
             description: selectedClient ? `Pgto: ${selectedClient.name}` : transDesc || 'Venda Avulsa',
@@ -393,7 +406,7 @@ const CashFlow = () => {
             client_id: dbClient?.id || null,
             professional_id: primaryPro?.id || null,
             discount: discount,
-            items_json: cartItems,
+            items_json: finalCartItems,
             observation: finalObs
         };
 

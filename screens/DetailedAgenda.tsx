@@ -296,7 +296,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   }
 
   // Check existing appointments
-  const existingApps = (appointments || []).filter(a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled');
+  const existingApps = (appointments || []).filter(a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago');
   const hasCollision = existingApps.some(apt => {
    const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
    const aptEnd = aptStart + apt.durationMinutes;
@@ -826,7 +826,6 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
                <div className="flex gap-1 ml-auto opacity-0 group-hover/card:opacity-100 transition-opacity">
                 {apt.status === 'pending' && <button onClick={(e) => {e.stopPropagation(); handleUpdateStatus(apt.id,'confirmed')}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-emerald-500/20 hover:border-emerald-500 hover:text-emerald-400"><span className="material-symbols-outlined" style={{fontSize:15}}>check</span></button>}
                 {apt.status === 'confirmed' && <button onClick={(e) => {e.stopPropagation(); handleUpdateStatus(apt.id,'em_atendimento')}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-indigo-500/20 hover:border-indigo-500 hover:text-indigo-400"><span className="material-symbols-outlined" style={{fontSize:15}}>play_arrow</span></button>}
-                {apt.status === 'em_atendimento' && <button onClick={(e) => {e.stopPropagation(); handleUpdateStatus(apt.id,'pago')}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-emerald-500/20 hover:border-emerald-500 hover:text-emerald-400"><span className="material-symbols-outlined" style={{fontSize:15}}>check_circle</span></button>}
                 <button onClick={(e) => {e.stopPropagation(); startReschedule(apt)}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-amber-600/20 hover:border-amber-600 hover:text-amber-400"><span className="material-symbols-outlined" style={{fontSize:15}}>edit</span></button>
                 <button onClick={(e) => {e.stopPropagation(); handleCancel(apt)}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500 hover:text-red-400"><span className="material-symbols-outlined" style={{fontSize:15}}>close</span></button>
                </div>

@@ -19,6 +19,9 @@ export interface Commission {
     date: string;
     startTime?: string;
     endTime?: string;
+    scheduledDate?: string;
+    servicoIniciadoAt?: string;
+    servicoTerminadoAt?: string;
     serviceValue: number;
     commissionPercent: number;
     commissionValue: number;
@@ -220,6 +223,11 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                             service: item.title,
                             client: client?.name || 'Cliente Externo',
                             date: (t as any).date || (t.created_at ? t.created_at.split('T')[0] : ''),
+                            startTime: item.startTime,
+                            endTime: item.endTime,
+                            scheduledDate: item.scheduledDate,
+                            servicoIniciadoAt: item.servicoIniciadoAt,
+                            servicoTerminadoAt: item.servicoTerminadoAt,
                             serviceValue: item.price,
                             commissionPercent: rate,
                             commissionValue: commissionValue,

@@ -1087,7 +1087,18 @@ const SalonComissoesDashboard = () => {
                                     <tbody className="divide-y divide-white/[0.05]">
                                       {lote.commissions.map((comm: any, idx: number) => (
                                         <tr key={comm.id || idx} className="hover:bg-white/[0.03] transition-colors text-center">
-                                          <td className="px-4 py-2.5 text-slate-400">{new Date(comm.date).toLocaleDateString('pt-BR')}</td>
+                                          <td className="px-4 py-2.5 text-slate-400 text-left">
+                                            {comm.scheduledDate ? (
+                                              <div className="flex flex-col gap-1 items-center">
+                                                <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate).toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                  <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              new Date(comm.date).toLocaleDateString('pt-BR')
+                                            )}
+                                          </td>
                                           <td className="px-4 py-2.5 text-white font-semibold">{comm.service}</td>
                                           <td className="px-4 py-2.5 text-slate-400 italic font-medium">{comm.client}</td>
                                           <td className="px-4 py-2.5 text-slate-400">{formatBRL(comm.serviceValue)}</td>

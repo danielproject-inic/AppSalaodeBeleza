@@ -871,7 +871,23 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
                                     .map((comm: any, idx: number) => (
                                     <tr key={comm.id || `hist-${idx}`} className="hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-4 py-3 text-[11px] text-white/60">{new Date(comm.date).toLocaleDateString('pt-BR')}</td>
+                                        <td className="px-4 py-3">
+                                            {comm.scheduledDate ? (
+                                              <div className="flex flex-col gap-1 items-start">
+                                                <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                  <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <div className="flex flex-col gap-1 items-start">
+                                                <span className="text-[11px] text-white/60">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                                {(comm.startTime || comm.endTime) && (
+                                                    <span className="text-[10px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                )}
+                                              </div>
+                                            )}
+                                        </td>
                                         <td className="px-4 py-3 text-[11px] font-bold text-white">{comm.clientName || comm.client || 'Cliente'}</td>
                                         {canViewAll && <td className="px-4 py-3 text-[11px] font-bold text-[#b45309]">{comm.professionalName}</td>}
                                         <td className="px-4 py-3 text-[11px] text-white/80">{comm.service}</td>

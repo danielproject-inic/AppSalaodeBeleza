@@ -47,7 +47,7 @@ const CommissionsTransactions: React.FC = () => {
                 rule,
                 displayStatus,
                 // Helper for period filter (e.g., "Oct 2024")
-                periodLabel: c.date ? new Date(c.date).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : 'N/A'
+                periodLabel: c.date ? new Date(c.date.includes('T') ? c.date : c.date + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) : 'N/A'
             };
         });
     }, [commissions, transactions]);
@@ -214,7 +214,7 @@ const CommissionsTransactions: React.FC = () => {
                                 <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group border-b border-slate-100 last:border-0 font-body">
                                     <td className="p-4 text-slate-500 text-xs font-bold">
                                         <div className="flex flex-col">
-                                            <span className="text-slate-800">{item.date}</span>
+                                            <span className="text-slate-800">{new Date(item.date.includes('T') ? item.date : item.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                                             <span className="text-slate-400 text-[10px] uppercase">{item.time}</span>
                                         </div>
                                     </td>

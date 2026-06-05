@@ -222,7 +222,10 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                             professionalAvatar: itemPro.avatar_url || '',
                             service: item.title,
                             client: client?.name || 'Cliente Externo',
-                            date: (t as any).date || (t.created_at ? t.created_at.split('T')[0] : ''),
+                            date: (t as any).date || (t.created_at ? (() => {
+                                const d = new Date(t.created_at);
+                                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            })() : ''),
                             startTime: item.startTime,
                             endTime: item.endTime,
                             scheduledDate: item.scheduledDate,

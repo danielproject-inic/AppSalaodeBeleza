@@ -935,14 +935,12 @@ const CashFlow = () => {
                                             <div className="space-y-3">
                                                 {cartItems.map((item, idx) => (
                                                     <div key={idx} className="flex items-center justify-between p-4 bg-[#111827]/40 border border-white/5 rounded-2xl group relative hover:border-white/10 transition-all">
-                                                        {idx > 0 && (
-                                                            <button
-                                                                onClick={() => setCartItems(prev => prev.filter((_, i) => i !== idx))}
-                                                                className="absolute -right-2 -top-2 w-6 h-6 bg-[#1e293b] border border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-rose-500 hover:shadow-md transition-all opacity-0 group-hover:opacity-100"
-                                                            >
-                                                                <span className="material-symbols-outlined text-sm">close</span>
-                                                            </button>
-                                                        )}
+                                                        <button
+                                                            onClick={() => setCartItems(prev => prev.filter((_, i) => i !== idx))}
+                                                            className="absolute -right-2 -top-2 w-6 h-6 bg-[#1e293b] border border-white/10 rounded-full flex items-center justify-center text-white/40 hover:text-rose-500 hover:shadow-md transition-all opacity-0 group-hover:opacity-100"
+                                                        >
+                                                            <span className="material-symbols-outlined text-sm">close</span>
+                                                        </button>
                                                         <div className="flex items-center gap-4">
                                                             <div className="size-10 rounded-xl bg-white/5 flex items-center justify-center text-cyan-400 shadow-none border border-white/5">
                                                                 <span className="material-symbols-outlined">content_cut</span>

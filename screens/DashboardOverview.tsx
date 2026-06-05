@@ -861,7 +861,21 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                     .map((comm: any, idx: number) => (
                                         <tr key={comm.id || `hist-${idx}`} className="hover:bg-white/[0.02] transition-colors group">
                                             <td className="px-4 py-4 text-center">
-                                                <span className="text-[11px] font-black text-white/40 tracking-tight">{new Date(comm.date).toLocaleDateString('pt-BR')}</span>
+                                                {comm.scheduledDate ? (
+                                                  <div className="flex flex-col gap-1 items-center">
+                                                    <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                    {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                      <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                    )}
+                                                  </div>
+                                                ) : (
+                                                  <div className="flex flex-col gap-1 items-center">
+                                                    <span className="text-[11px] font-black text-white/40 tracking-tight">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                                    {(comm.startTime || comm.endTime) && (
+                                                        <span className="text-[10px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                    )}
+                                                  </div>
+                                                )}
                                             </td>
                                             <td className="px-4 py-4">
                                                 <span className="text-[12px] font-black text-white tracking-tight group-hover:text-[#b45309] transition-colors">{comm.clientName || comm.client || 'Cliente'}</span>

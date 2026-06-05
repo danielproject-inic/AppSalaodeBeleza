@@ -379,7 +379,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                     </div>
                                     <div className="flex justify-between items-center text-sm font-bold">
                                         <span className="text-slate-500 uppercase text-[10px]">Data e Hora</span>
-                                        <span className="text-[#22d3ee]">{new Date(selectedDate).toLocaleDateString()} às {manualTime}</span>
+                                        <span className="text-[#22d3ee]">{new Date(selectedDate + 'T12:00:00').toLocaleDateString()} às {manualTime}</span>
                                     </div>
                                     <div className="pt-4 border-t border-white/5 flex justify-between items-end">
                                         <span className="text-slate-500 uppercase text-[10px]">Valor Total</span>

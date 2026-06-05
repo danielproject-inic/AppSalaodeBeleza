@@ -168,7 +168,8 @@ const SalonComissoesDashboard = () => {
 
     const loteCode = `SAB-${initials}-${dd}${mm}${yy}-${pType}`;
     const rawDateStr = b.data?.requestedAt || b.created_at || new Date().toISOString();
-    const periodLabel = b.period || b.data?.periodLabel || new Date(rawDateStr).toLocaleDateString('pt-BR');
+    const safeDateStr = rawDateStr.includes('T') ? rawDateStr : rawDateStr + 'T12:00:00';
+    const periodLabel = b.period || b.data?.periodLabel || new Date(safeDateStr).toLocaleDateString('pt-BR');
 
     return {
       ...b,
@@ -318,9 +319,13 @@ const SalonComissoesDashboard = () => {
           const year = dateObj.getFullYear();
           const q = day <= 15 ? 'Q1' : 'Q2';
 
-          if (historyPeriodFilter === 'Diário' && c.startTime) {
+          if (c.startTime) {
             if (!g.startTime || c.startTime < g.startTime) g.startTime = c.startTime;
             if (c.endTime && (!g.endTime || c.endTime > g.endTime)) g.endTime = c.endTime;
+          }
+
+          if (historyPeriodFilter === 'Diário' && g.commissions.length === 0) {
+            g.dateLabel = `${String(day).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
           }
 
           g.grossValue += (c.serviceValue || 0);
@@ -949,13 +954,13 @@ return (
                                         <td className="px-4 py-2.5 text-slate-400 text-left">
                                           {comm.scheduledDate ? (
                                             <div className="flex flex-col gap-1 items-center">
-                                              <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate).toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                              <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
                                               {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
                                                 <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
                                               )}
                                             </div>
                                           ) : (
-                                            new Date(comm.date).toLocaleDateString('pt-BR')
+                                            new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')
                                           )}
                                         </td>
                                         <td className="px-4 py-2.5 text-white font-semibold">{comm.service}</td>
@@ -1170,7 +1175,18 @@ return (
                                                   <tr key={comm.id || cidx} className="border-b border-white/[0.02] last:border-0">
                                                     <td className="py-2 pl-2 font-bold text-white/70 text-center">{comm.service}</td>
                                                     <td className="py-2 text-white/40 italic text-center">{comm.client}</td>
-                                                    <td className="py-2 text-center text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</td>
+                                                    <td className="py-2 text-center text-white/30">
+                                                    {comm.scheduledDate ? (
+                                                      <div className="flex flex-col gap-1 items-center">
+                                                        <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                        {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                          <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                        )}
+                                                      </div>
+                                                    ) : (
+                                                      <span>{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                    )}
+                                                  </td>
                                                     <td className="py-2 text-center text-white/30">{formatBRL(comm.serviceValue)}</td>
                                                     <td className="py-2 text-center font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
                                                   </tr>
@@ -1204,7 +1220,18 @@ return (
                                       <tr key={comm.id || cidx} className="border-b border-white/[0.02] last:border-0">
                                         <td className="py-2 pl-2 font-bold text-white/70 text-center">{comm.service}</td>
                                         <td className="py-2 text-white/40 italic text-center">{comm.client}</td>
-                                        <td className="py-2 text-center text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</td>
+                                        <td className="py-2 text-center text-white/30">
+                                          {comm.scheduledDate ? (
+                                            <div className="flex flex-col gap-1 items-center">
+                                              <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                              {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                              )}
+                                            </div>
+                                          ) : (
+                                            <span>{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                          )}
+                                        </td>
                                         <td className="py-2 text-center text-white/30">{formatBRL(comm.serviceValue)}</td>
                                         <td className="py-2 text-center font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
                                       </tr>
@@ -1254,7 +1281,18 @@ return (
                                               <tr key={comm.id || cidx} className="border-b border-white/[0.02] last:border-0">
                                                 <td className="py-2 pl-2 font-bold text-white/70 text-center">{comm.service}</td>
                                                 <td className="py-2 text-white/40 italic text-center">{comm.client}</td>
-                                                <td className="py-2 text-center text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</td>
+                                                <td className="py-2 text-center text-white/30">
+                                                  {comm.scheduledDate ? (
+                                                    <div className="flex flex-col gap-1 items-center">
+                                                      <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                      {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                        <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                      )}
+                                                    </div>
+                                                  ) : (
+                                                    <span>{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                  )}
+                                                </td>
                                                 <td className="py-2 text-center text-white/30">{formatBRL(comm.serviceValue)}</td>
                                                 <td className="py-2 text-center font-black text-amber-700">{formatBRL(comm.commissionValue)}</td>
                                               </tr>

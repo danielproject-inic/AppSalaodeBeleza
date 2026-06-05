@@ -758,7 +758,7 @@ const ClientList: React.FC = () => {
                                 <div>
                                     <h3 className="text-lg font-bold text-white">{detailItem.title}</h3>
                                     <p className="text-xs text-white/50">
-                                        {new Date(detailItem.date).toLocaleDateString('pt-BR')} às {new Date(detailItem.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                         {new Date(detailItem.date.includes('T') ? detailItem.date : detailItem.date + 'T12:00:00').toLocaleDateString('pt-BR')} às {new Date(detailItem.date.includes('T') ? detailItem.date : detailItem.date + 'T12:00:00').toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                     </p>
                                 </div>
                             </div>
@@ -1232,7 +1232,7 @@ const ClientList: React.FC = () => {
                                                                         </div>
                                                                         <div className="flex items-center mt-1 gap-2">
                                                                             <p className="text-[10px] text-white/50 font-medium uppercase tracking-wider">
-                                                                                {new Date(item.date).toLocaleDateString('pt-BR')} • {item.professional}
+                                                                                 {new Date(item.date.includes('T') ? item.date : item.date + 'T12:00:00').toLocaleDateString('pt-BR')} • {item.professional}
                                                                             </p>
                                                                             {(item.startTime || item.endTime) && (
                                                                                 <div className="flex items-center gap-2 bg-[#1e293b] px-2 py-0.5 rounded border border-white/10">

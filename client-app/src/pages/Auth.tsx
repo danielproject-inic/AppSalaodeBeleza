@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Lock, Phone, ArrowRight, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Phone, ArrowRight, Sparkles, Eye, EyeOff, X, ChevronRight } from 'lucide-react';
 import { useSalon } from '../contexts/SalonContext';
 
 const Auth: React.FC = () => {
@@ -10,6 +10,25 @@ const Auth: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [savedEmails, setSavedEmails] = useState<string[]>([]);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    React.useEffect(() => {
+        const saved = localStorage.getItem('saved_emails_client');
+        if (saved) {
+            try {
+                setSavedEmails(JSON.parse(saved));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }, []);
+
+    const handleRemoveEmail = (emailToRemove: string) => {
+        const updated = savedEmails.filter(e => e !== emailToRemove);
+        setSavedEmails(updated);
+        localStorage.setItem('saved_emails_client', JSON.stringify(updated));
+    };
     const [showPassword, setShowPassword] = useState(false);
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
@@ -24,6 +43,14 @@ const Auth: React.FC = () => {
             if (isLogin) {
                 const { error } = await supabase.auth.signInWithPassword({ email, password });
                 if (error) throw error;
+
+                // Persistir email no localStorage após login de sucesso
+                const saved = localStorage.getItem('saved_emails_client');
+                let emailsList: string[] = saved ? JSON.parse(saved) : [];
+                if (!emailsList.includes(email.trim().toLowerCase())) {
+                    emailsList.push(email.trim().toLowerCase());
+                    localStorage.setItem('saved_emails_client', JSON.stringify(emailsList));
+                }
             } else {
                 const { data, error } = await supabase.auth.signUp({
                     email,
@@ -121,9 +148,53 @@ const Auth: React.FC = () => {
                                 placeholder="E-MAIL"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-white/60 border border-stone-200 rounded-xl py-3 pl-10 pr-4 text-sm font-bold text-stone-800 placeholder-stone-400 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all outline-none"
+                                className="w-full bg-white/60 border border-stone-200 rounded-xl py-3 pl-10 pr-12 text-sm font-bold text-stone-800 placeholder-stone-400 focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 transition-all outline-none"
                                 required
                             />
+                            {isLogin && savedEmails.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowDropdown(!showDropdown)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-600 transition-colors focus:outline-none flex items-center justify-center"
+                                >
+                                    <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${showDropdown ? 'rotate-90 text-amber-600' : ''}`} />
+                                </button>
+                            )}
+
+                            {/* Dropdown absoluto */}
+                            {isLogin && showDropdown && savedEmails.length > 0 && (
+                                <>
+                                    {/* Backdrop transparente para fechar ao clicar fora */}
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                                    <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 bg-white border border-stone-200 rounded-2xl py-2 shadow-2xl overflow-hidden animate-in fade-in duration-200 text-stone-800">
+                                        {savedEmails.map((savedEmail) => (
+                                            <div
+                                                key={savedEmail}
+                                                className="flex items-center justify-between px-4 py-3 hover:bg-stone-50 cursor-pointer group/item transition-colors"
+                                                onClick={() => {
+                                                    setEmail(savedEmail);
+                                                    setShowDropdown(false);
+                                                }}
+                                            >
+                                                <span className="text-sm text-stone-700 group-hover/item:text-stone-900 font-bold truncate flex-1">{savedEmail}</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleRemoveEmail(savedEmail);
+                                                        if (savedEmails.length <= 1) {
+                                                            setShowDropdown(false);
+                                                        }
+                                                    }}
+                                                    className="text-stone-300 hover:text-red-500 p-1 flex items-center justify-center transition-colors"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         <div className="relative">

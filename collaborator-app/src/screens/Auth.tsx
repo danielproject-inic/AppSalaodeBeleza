@@ -11,6 +11,25 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     const { salonName } = useSalon();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [savedEmails, setSavedEmails] = useState<string[]>([]);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    React.useEffect(() => {
+        const saved = localStorage.getItem('saved_emails_collab');
+        if (saved) {
+            try {
+                setSavedEmails(JSON.parse(saved));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }, []);
+
+    const handleRemoveEmail = (emailToRemove: string) => {
+        const updated = savedEmails.filter(e => e !== emailToRemove);
+        setSavedEmails(updated);
+        localStorage.setItem('saved_emails_collab', JSON.stringify(updated));
+    };
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -28,6 +47,15 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                 password,
             });
             if (error) throw error;
+
+            // Persistir email no localStorage após login de sucesso
+            const saved = localStorage.getItem('saved_emails_collab');
+            let emailsList: string[] = saved ? JSON.parse(saved) : [];
+            if (!emailsList.includes(email.trim().toLowerCase())) {
+                emailsList.push(email.trim().toLowerCase());
+                localStorage.setItem('saved_emails_collab', JSON.stringify(emailsList));
+            }
+
             onAuthSuccess();
         } catch (err: any) {
             setError(err.message || 'Ocorreu um erro na autenticação.');
@@ -79,9 +107,55 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="seu@exemplo.com"
-                                        className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-4 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20"
+                                        className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-12 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20"
                                         required
                                     />
+                                    {savedEmails.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowDropdown(!showDropdown)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-white/25 hover:text-[#b45309] transition-colors duration-300 focus:outline-none flex items-center justify-center animate-in fade-in"
+                                        >
+                                            <span className={`material-symbols-outlined transition-transform duration-300 ${showDropdown ? 'rotate-90 text-[#b45309]' : ''}`}>
+                                                chevron_right
+                                            </span>
+                                        </button>
+                                    )}
+
+                                    {/* Dropdown absoluto */}
+                                    {showDropdown && savedEmails.length > 0 && (
+                                        <>
+                                            {/* Backdrop transparente para fechar ao clicar fora */}
+                                            <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                                            <div className="absolute left-0 right-0 top-[calc(100%+4px)] z-50 bg-[#1f2937] border border-white/10 rounded-2xl py-2 shadow-2xl overflow-hidden animate-in fade-in duration-200">
+                                                {savedEmails.map((savedEmail) => (
+                                                    <div
+                                                        key={savedEmail}
+                                                        className="flex items-center justify-between px-4 py-3 hover:bg-white/5 cursor-pointer group/item transition-colors"
+                                                        onClick={() => {
+                                                            setEmail(savedEmail);
+                                                            setShowDropdown(false);
+                                                        }}
+                                                    >
+                                                        <span className="text-sm text-white/80 group-hover/item:text-white font-medium truncate flex-1">{savedEmail}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleRemoveEmail(savedEmail);
+                                                                if (savedEmails.length <= 1) {
+                                                                    setShowDropdown(false);
+                                                                }
+                                                            }}
+                                                            className="text-white/30 hover:text-red-400 p-1 flex items-center justify-center transition-colors"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[16px]">close</span>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
                             </div>
 

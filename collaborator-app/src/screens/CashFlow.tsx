@@ -115,7 +115,7 @@ const CashFlow = () => {
 
     // --- UI State ---
     const [isCaixaOpen, setIsCaixaOpen] = useState(() => safeGetItem('cashflow_isOpen', 'false') === 'true');
-    const [modalMode, setModalMode] = useState<'none' | 'open' | 'close' | 'payment' | 'transaction' | 'bill' | 'vale' | 'add_service'>('none');
+    const [modalMode, setModalMode] = useState<'none' | 'open' | 'close' | 'payment' | 'transaction' | 'bill' | 'vale' | 'add_service' | 'resolve_pending'>('none');
 
     const { profile, role, professionalId } = useCurrentUserRef();
     const isAdmin = role === 'admin' || role === 'manager' || role === 'receptionist';
@@ -156,7 +156,7 @@ const CashFlow = () => {
     const [serviceSearch, setServiceSearch] = useState('');
 
     const [quickReason, setQuickReason] = useState('');
-    const [activeTab, setActiveTab] = useState<'agendados' | 'recebimentos' | 'saidas' | 'contas'>('agendados');
+    const [activeTab, setActiveTab] = useState<'agendados' | 'recebimentos' | 'saidas' | 'contas' | 'pendentes'>('agendados');
     const [showPinEntry, setShowPinEntry] = useState(false);
 
     // Payment Finalization State
@@ -165,6 +165,10 @@ const CashFlow = () => {
     const [paymentDiscountPercent, setPaymentDiscountPercent] = useState('');
     const [cashReceived, setCashReceived] = useState('');
     const [isWalkIn, setIsWalkIn] = useState(false);
+    const [clientSearchQuery, setClientSearchQuery] = useState('');
+    const [pendingDueDate, setPendingDueDate] = useState('');
+    const [selectedPendingTransaction, setSelectedPendingTransaction] = useState<any>(null);
+    const [resolvePaymentMethod, setResolvePaymentMethod] = useState('');
     const [tempSelPro, setTempSelPro] = useState<string>('');
     const [tempSelService, setTempSelService] = useState<ServiceFlat | null>(null);
 
@@ -172,6 +176,20 @@ const CashFlow = () => {
     const professionalsList = useMemo(() => dbProfessionals.map(p => p.name), [dbProfessionals]);
 
     const allClientsFormatted = useMemo(() => dbClients.map(c => ({ id: c.id, name: c.name })), [dbClients]);
+
+    const filteredClients = useMemo(() => {
+        const query = clientSearchQuery.trim().toLowerCase();
+        const filtered = allClientsFormatted.filter(c => 
+            c.name.toLowerCase().includes(query)
+        );
+        if (selectedClient && !filtered.some(c => c.id === selectedClient.id)) {
+            const found = allClientsFormatted.find(c => c.id === selectedClient.id);
+            if (found) {
+                filtered.unshift(found);
+            }
+        }
+        return filtered;
+    }, [allClientsFormatted, clientSearchQuery, selectedClient]);
 
     const servicesWithPros: ServiceFlat[] = useMemo(() => {
         return dbServices.map(s => {
@@ -284,6 +302,10 @@ const CashFlow = () => {
         setSelectedClient(null);
         setServiceSearch('');
         setCashReceived('');
+        setClientSearchQuery('');
+        setPendingDueDate('');
+        setSelectedPendingTransaction(null);
+        setResolvePaymentMethod('');
     };
 
     const handleOpenPayment = (client: ScheduledClient) => {
@@ -383,12 +405,26 @@ const CashFlow = () => {
         const primaryPro = dbProfessionals.find(p => p.name === involvedProsNames[0]);
         const dbClient = dbClients.find(c => c.name === selectedClient?.name);
 
+        if (transMethod === 'Pendente') {
+            if (!selectedClient || !dbClient) {
+                alert('Para pagamentos pendentes, é obrigatório selecionar um cliente cadastrado.');
+                return;
+            }
+            if (!pendingDueDate) {
+                alert('Por favor, selecione a data prometida para o pagamento.');
+                return;
+            }
+        }
+
         let finalObs = paymentObservation;
         if (transMethod === 'Dinheiro') {
             const received = parseFloat(cashReceived) || 0;
             const change = Math.max(0, received - total);
             const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
             finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
+        } else if (transMethod === 'Pendente') {
+            const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
+            finalObs = finalObs ? `${dueDateInfo} ${finalObs}` : dueDateInfo;
         }
 
         const finalCartItems = cartItems.map(item => ({
@@ -402,7 +438,7 @@ const CashFlow = () => {
             category: 'Serviço',
             amount: total,
             payment_method: transMethod,
-            status: 'pago',
+            status: transMethod === 'Pendente' ? 'pendente' : 'pago',
             client_id: dbClient?.id || null,
             professional_id: primaryPro?.id || null,
             discount: discount,
@@ -414,7 +450,7 @@ const CashFlow = () => {
 
         if (selectedClient && selectedClient.id) {
             await updateAppointment(selectedClient.id, {
-                status: 'pago',
+                status: transMethod === 'Pendente' ? 'concluido' : 'pago',
                 servico_terminado_at: new Date().toISOString()
             });
         }
@@ -435,8 +471,72 @@ const CashFlow = () => {
         setPaymentObservation('');
         setPaymentDiscountPercent('');
         setSelectedClient(null); // Ensure no client is initially selected
+        setClientSearchQuery('');
+        setPendingDueDate('');
+        setSelectedPendingTransaction(null);
+        setResolvePaymentMethod('');
         setIsWalkIn(true); // Enable walk-in mode
         setModalMode('payment');
+    };
+
+    const extractDueDate = (obs: string | null) => {
+        if (!obs) return null;
+        const match = obs.match(/\[Vencimento:\s*([^\]]+)\]/);
+        return match ? match[1] : null;
+    };
+
+    const handleSendWhatsAppReminder = (t: any) => {
+        const client = dbClients.find(c => c.name === t.client || c.id === t.client_id);
+        if (!client) {
+            alert('Não foi possível localizar o cadastro deste cliente.');
+            return;
+        }
+
+        const clientName = client.name;
+        const phone = client.phone ? client.phone.replace(/\D/g, '') : '';
+        if (!phone) {
+            alert('Este cliente não possui telefone cadastrado.');
+            return;
+        }
+
+        const amountFormatted = formatCurrency(t.amount);
+        const dueDate = extractDueDate(t.observation);
+        const dueDateStr = dueDate ? new Date(dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'breve';
+
+        const message = `Olá, ${clientName}! Esperamos que esteja bem. 🌸\n\nPassando para lembrar que consta em nosso sistema um pagamento pendente no valor de ${amountFormatted}, com vencimento em ${dueDateStr}. Como prefere realizar o pagamento? Se desejar, podemos gerar um Pix Copia e Cola para facilitar!\n\nAgradecemos a preferência!\n\nAtenciosamente, Salon Suite Pro`;
+
+        let cleanPhone = phone;
+        if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
+            cleanPhone = '55' + cleanPhone;
+        }
+
+        const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    };
+
+    const handleResolvePendingPayment = async () => {
+        if (!selectedPendingTransaction) return;
+        if (!resolvePaymentMethod) {
+            alert('Por favor, selecione a forma de pagamento.');
+            return;
+        }
+
+        const { error } = await supabase
+            .from('transactions')
+            .update({
+                status: 'pago',
+                payment_method: resolvePaymentMethod,
+                created_at: new Date().toISOString()
+            })
+            .eq('id', selectedPendingTransaction.id);
+
+        if (error) {
+            alert('Erro ao dar baixa no pagamento: ' + error.message);
+            return;
+        }
+
+        setModalMode('none');
+        resetForm();
     };
 
     // Quick Op handled by Vale modal now
@@ -675,6 +775,7 @@ const CashFlow = () => {
                             { id: 'recebimentos', label: 'RECEBIMENTOS', icon: 'arrow_downward' },
                             { id: 'saidas', label: 'SAÍDAS', icon: 'arrow_upward' },
                             { id: 'contas', label: 'CONTAS A PAGAR', icon: 'book' },
+                            { id: 'pendentes', label: 'A RECEBER (FIADO)', icon: 'schedule' },
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -777,6 +878,75 @@ const CashFlow = () => {
                                 </div>
                             </div>
                         ))}
+
+                        {activeTab === 'pendentes' && transactions
+                            .filter(t => t.type === 'entrada' && t.status === 'pendente')
+                            .map(t => {
+                                const dueDate = extractDueDate(t.observation);
+                                const isOverdue = dueDate ? new Date(dueDate + 'T23:59:59') < new Date() : false;
+                                const formattedDueDate = dueDate ? new Date(dueDate + 'T12:00:00').toLocaleDateString('pt-BR') : 'Sem data';
+
+                                return (
+                                    <div key={t.id} className="group flex items-center justify-between p-5 rounded-[1.5rem] bg-[#1f2937]/50 border border-white/5 hover:bg-[#1f2937] transition-all animate-in fade-in duration-300">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 rounded-xl flex items-center justify-center bg-white/5 border border-white/10 text-cyan-400">
+                                                <span className="material-symbols-outlined text-2xl">pending_actions</span>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-white text-lg tracking-tight">{t.client || 'Cliente Cadastrado'}</h3>
+                                                <p className="text-xs text-white/50 mt-1">
+                                                    {t.description} • {t.professional || 'Profissional'}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-2">
+                                                    <span className="text-[9px] font-bold text-white/30 uppercase">Prometido para:</span>
+                                                    <span className={`text-[10px] font-black uppercase tracking-wider ${isOverdue ? 'text-rose-400' : 'text-amber-400'}`}>
+                                                        {formattedDueDate}
+                                                    </span>
+                                                    <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${isOverdue ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}`}>
+                                                        {isOverdue ? 'Vencido' : 'No Prazo'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-right">
+                                                <p className="font-mono text-white font-black text-xl">{formatCurrency(t.amount)}</p>
+                                                {t.discount && t.discount > 0 ? (
+                                                    <p className="text-[10px] text-emerald-400 font-bold uppercase mt-0.5">-{formatCurrency(t.discount)} Desc.</p>
+                                                ) : null}
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => handleSendWhatsAppReminder(t)}
+                                                    className="w-10 h-10 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/30 flex items-center justify-center transition-all active:scale-95"
+                                                    title="Enviar Lembrete por WhatsApp"
+                                                >
+                                                    <span className="material-symbols-outlined text-lg">chat</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedPendingTransaction(t);
+                                                        setResolvePaymentMethod('');
+                                                        setModalMode('resolve_pending');
+                                                    }}
+                                                    className="px-4 h-10 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-black uppercase tracking-widest text-[10px] flex items-center justify-center shadow-lg shadow-cyan-500/10 active:scale-95"
+                                                    title="Dar Baixa no Pagamento"
+                                                >
+                                                    Dar Baixa
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                        {activeTab === 'pendentes' && transactions.filter(t => t.type === 'entrada' && t.status === 'pendente').length === 0 && (
+                            <div className="p-10 text-center text-white/20 bg-[#1f2937]/30 rounded-3xl border border-dashed border-white/5 animate-in fade-in duration-300">
+                                <span className="material-symbols-outlined text-5xl mb-3 text-cyan-400/40">volunteer_activism</span>
+                                <p className="text-sm font-bold text-white/50">Nenhum pagamento pendente no momento!</p>
+                                <p className="text-xs text-white/20 mt-1">Tudo está em dia.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -886,33 +1056,54 @@ const CashFlow = () => {
                                     <div className="space-y-8">
                                         {/* Top Bar: Client & Pro */}
                                         <div className="grid grid-cols-2 gap-6">
-                                            <div className="bg-[#111827]/50 p-5 rounded-2xl border border-white/5 flex flex-col justify-center col-span-2 shadow-inner">
-                                                <span className="text-[10px] text-cyan-400 uppercase font-black tracking-widest mb-2">Cliente</span>
+                                            <div className="bg-[#111827]/50 p-5 rounded-2xl border border-white/5 flex flex-col justify-center col-span-2 shadow-inner gap-3">
+                                                <span className="text-[10px] text-cyan-400 uppercase font-black tracking-widest">Cliente</span>
                                                 {isWalkIn ? (
-                                                    <select
-                                                        value={selectedClient?.id || ''}
-                                                        onChange={e => {
-                                                            const client = allClientsFormatted.find(c => c.id === e.target.value);
-                                                            if (client) {
-                                                                setSelectedClient({
-                                                                    id: client.id,
-                                                                    name: client.name,
-                                                                    service: 'Serviço Avulso',
-                                                                    professional: '',
-                                                                    time: getCurrentTime(),
-                                                                    endTime: getCurrentTime(),
-                                                                    amount: 0,
-                                                                    status: 'aguardando'
-                                                                });
-                                                            } else {
-                                                                setSelectedClient(null);
-                                                            }
-                                                        }}
-                                                        className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2 text-lg font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all cursor-pointer shadow-none"
-                                                    >
-                                                        <option value="">Selecionar Cliente...</option>
-                                                        {allClientsFormatted.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                    </select>
+                                                    <div className="space-y-3">
+                                                        <div className="relative">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Digite para buscar o cliente..."
+                                                                value={clientSearchQuery}
+                                                                onChange={e => setClientSearchQuery(e.target.value)}
+                                                                className="w-full bg-[#1e293b] border border-white/10 rounded-xl pl-10 pr-10 py-2 text-sm font-bold text-white placeholder:text-white/20 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
+                                                            />
+                                                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-lg">search</span>
+                                                            {clientSearchQuery && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setClientSearchQuery('')}
+                                                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-xs">close</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                        <select
+                                                            value={selectedClient?.id || ''}
+                                                            onChange={e => {
+                                                                const client = allClientsFormatted.find(c => c.id === e.target.value);
+                                                                if (client) {
+                                                                    setSelectedClient({
+                                                                        id: client.id,
+                                                                        name: client.name,
+                                                                        service: 'Serviço Avulso',
+                                                                        professional: '',
+                                                                        time: getCurrentTime(),
+                                                                        endTime: getCurrentTime(),
+                                                                        amount: 0,
+                                                                        status: 'aguardando'
+                                                                    });
+                                                                } else {
+                                                                    setSelectedClient(null);
+                                                                }
+                                                            }}
+                                                            className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2 text-lg font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all cursor-pointer shadow-none"
+                                                        >
+                                                            <option value="">Selecionar Cliente...</option>
+                                                            {filteredClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                                        </select>
+                                                    </div>
                                                 ) : (
                                                     <span className="text-xl font-black text-white tracking-tight">{selectedClient?.name || 'Cliente Avulso'}</span>
                                                 )}
@@ -992,6 +1183,9 @@ const CashFlow = () => {
                                                         <PaymentMethodBtn method="Dinheiro" icon="payments" label="Dinheiro" activeColor="bg-amber-500 text-white" borderColor="border-amber-500/50" />
                                                         <PaymentMethodBtn method="Crédito" icon="credit_card" label="Cartão Crédito" activeColor="bg-indigo-500 text-white" borderColor="border-indigo-500/50" />
                                                         <PaymentMethodBtn method="Débito" icon="credit_score" label="Cartão Débito" activeColor="bg-blue-500 text-white" borderColor="border-blue-500/50" />
+                                                        <div className="col-span-2">
+                                                            <PaymentMethodBtn method="Pendente" icon="pending_actions" label="Pagar Depois (Pendente / Fiado)" activeColor="bg-rose-500 text-white" borderColor="border-rose-500/50" />
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -1049,6 +1243,22 @@ const CashFlow = () => {
                                                         </div>
                                                     )}
 
+                                                    {transMethod === 'Pendente' && (
+                                                        <div className="space-y-1 animate-in slide-in-from-top-2 duration-300">
+                                                            <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Data Prometida para o Pagamento (Obrigatório)</label>
+                                                            <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                <span className="material-symbols-outlined text-cyan-400 text-lg">calendar_today</span>
+                                                                <input
+                                                                    type="date"
+                                                                    value={pendingDueDate}
+                                                                    onChange={e => setPendingDueDate(e.target.value)}
+                                                                    className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
+                                                                    required
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+
                                                     <div className="space-y-1">
                                                         <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Observações Internas</label>
                                                         <textarea
@@ -1099,10 +1309,13 @@ const CashFlow = () => {
                                                             Voltar
                                                         </button>
                                                         <button
-                                                            disabled={transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))}
+                                                            disabled={
+                                                                (transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) ||
+                                                                (transMethod === 'Pendente' && !pendingDueDate)
+                                                            }
                                                             onClick={handleProcessPayment}
                                                             className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
-                                                                ${transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))
+                                                                ${((transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) || (transMethod === 'Pendente' && !pendingDueDate))
                                                                     ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
                                                                     : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
                                                         >
@@ -1535,6 +1748,79 @@ const CashFlow = () => {
                                                     Confirmar Fechamento
                                                 </button>
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* RESOLVE PENDING PAYMENT */}
+                                {modalMode === 'resolve_pending' && selectedPendingTransaction && (
+                                    <div className="space-y-8 animate-in zoom-in-95 duration-400 font-sans">
+                                        <div className="w-20 h-20 mx-auto rounded-[1.5rem] bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-lg">
+                                            <span className="material-symbols-outlined text-4xl text-cyan-400">pending_actions</span>
+                                        </div>
+
+                                        <div className="text-center">
+                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase" style={{fontFamily:'Bebas Neue'}}>Dar Baixa em Débito</h3>
+                                            <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mt-1">Quitar pagamento pendente do cliente</p>
+                                        </div>
+
+                                        <div className="p-6 rounded-2xl bg-[#111827]/40 border border-white/5 space-y-4">
+                                            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                                                <span className="text-[10px] text-white/40 uppercase font-black tracking-wider">Cliente:</span>
+                                                <span className="text-sm font-bold text-white">{selectedPendingTransaction.client}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center pb-3 border-b border-white/5">
+                                                <span className="text-[10px] text-white/40 uppercase font-black tracking-wider">Serviços:</span>
+                                                <span className="text-sm font-bold text-white/80">{selectedPendingTransaction.description}</span>
+                                            </div>
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-[10px] text-cyan-400 uppercase font-black tracking-wider">Valor a Receber:</span>
+                                                <span className="text-2xl font-black text-cyan-400 font-mono">{formatCurrency(selectedPendingTransaction.amount)}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2 block">Escolha a Forma de Pagamento Real</label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {['PIX', 'Dinheiro', 'Crédito', 'Débito'].map(method => (
+                                                    <button
+                                                        key={method}
+                                                        type="button"
+                                                        onClick={() => setResolvePaymentMethod(method)}
+                                                        className={`py-3 px-4 rounded-xl border font-black uppercase tracking-widest text-[10px] transition-all flex items-center justify-center gap-2
+                                                            ${resolvePaymentMethod === method
+                                                                ? 'bg-cyan-500 text-slate-900 border-cyan-500 shadow-md shadow-cyan-500/10'
+                                                                : 'bg-[#111827]/40 border-white/5 text-white/60 hover:border-white/10 hover:bg-[#111827]/60'}`}
+                                                    >
+                                                        <span className="material-symbols-outlined text-base">
+                                                            {method === 'PIX' ? 'qr_code_2' : method === 'Dinheiro' ? 'payments' : method === 'Crédito' ? 'credit_card' : 'credit_score'}
+                                                        </span>
+                                                        {method}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex gap-4 pt-4">
+                                            <button
+                                                onClick={() => {
+                                                    setModalMode('none');
+                                                    resetForm();
+                                                }}
+                                                className="flex-1 py-4 rounded-2xl border border-white/10 text-white/40 font-black uppercase tracking-widest text-[10px] hover:bg-white/5 hover:text-white transition-all"
+                                            >
+                                                Voltar
+                                            </button>
+                                            <button
+                                                onClick={handleResolvePendingPayment}
+                                                disabled={!resolvePaymentMethod}
+                                                className={`flex-[2] py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl
+                                                    ${!resolvePaymentMethod
+                                                        ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60'
+                                                        : 'bg-emerald-500 text-slate-900 hover:bg-emerald-400 shadow-emerald-500/20 active:scale-95'}`}
+                                            >
+                                                Confirmar Quitação
+                                            </button>
                                         </div>
                                     </div>
                                 )}

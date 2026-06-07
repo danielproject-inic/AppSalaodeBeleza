@@ -211,7 +211,17 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                             }
                         }
 
-                        const commissionValue = (item.price * rate) / 100;
+                        // Calcular desconto proporcional do item
+                        let itemDiscount = 0;
+                        const discountTotal = typeof t.discount === 'string' ? parseFloat(t.discount) : (t.discount || 0);
+                        if (discountTotal > 0) {
+                            const itemsTotal = items.reduce((sum, it) => sum + (typeof it.price === 'string' ? parseFloat(it.price) : (it.price || 0)), 0);
+                            if (itemsTotal > 0) {
+                                itemDiscount = (item.price * discountTotal) / itemsTotal;
+                            }
+                        }
+                        const finalItemPrice = item.price - itemDiscount;
+                        const commissionValue = (finalItemPrice * rate) / 100;
 
                         const commInfo: Commission = {
                             id: `${t.id}-${index}`,
@@ -236,8 +246,8 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
                             commissionValue: commissionValue,
                             status: 'pending', // We'll determine status below
                             transactionId: t.id,
-                            isDiscounted: (t.discount || 0) > 0,
-                            discountValue: t.discount || 0
+                            isDiscounted: itemDiscount > 0,
+                            discountValue: itemDiscount
                         };
                         allCommissions.push(commInfo);
 

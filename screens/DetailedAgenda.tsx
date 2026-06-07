@@ -199,7 +199,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
  const [selectedClient, setSelectedClient] = useState<Client | undefined>(undefined);
  const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
  const [selectedService, setSelectedService] = useState<Service | null>(null);
- const [wizardDate, setWizardDate] = useState(currentDate || todayStr);
+ const [wizardDate, setWizardDate] = useState('');
  const [selectedTimeSlot, setSelectedTimeSlot] = useState<{ hour: string, minute: string } | null>(null);
  const [manualTime, setManualTime] = useState('');
  const [timeError, setTimeError] = useState('');
@@ -207,7 +207,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
 
  // Auto-validate time whenever date or time changes
  useEffect(() => {
-  if (!manualTime || !selectedProfessional || !selectedService) {
+  if (!manualTime || !selectedProfessional || !selectedService || !wizardDate) {
    setTimeError('');
    setSelectedTimeSlot(null);
    setEndTimePreview('');
@@ -340,7 +340,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   setSelectedProfessional(null);
   setSelectedService(null);
   setSelectedTimeSlot(null);
-  setWizardDate(currentDate || todayStr);
+  setWizardDate('');
   setFilterClient('');
   setIsRescheduling(false);
   setRescheduleId(null);
@@ -355,7 +355,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
  };
 
  const handleConfirmAppointment = async () => {
-  if (!selectedClient || !selectedProfessional || !selectedService || !selectedTimeSlot) return;
+  if (!selectedClient || !selectedProfessional || !selectedService || !selectedTimeSlot || !wizardDate) return;
   const start = new Date(`${wizardDate}T${selectedTimeSlot.hour}:${selectedTimeSlot.minute}:00`);
   const end = new Date(start.getTime() + selectedService.durationMinutes * 60000);
   const appointmentData: any = {
@@ -486,16 +486,157 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
     </div>
     <div className="max-h-[350px] overflow-y-auto space-y-2 custom-scrollbar">
      {availableServices.length > 0 ? availableServices.map(service => (
-      <div key={service.id} onClick={() => { setSelectedService(service); setWizardStep(4); }} className="p-4 rounded-lg border border-white/10 hover:border-cyan-500 hover:bg-white/5 cursor-pointer flex items-center justify-between group transition-all">
-       <div><p className="font-bold text-gray-200">{service.title}</p><p className="text-xs text-slate-400">{service.durationMinutes} min • R$ {service.price.toFixed(2)}</p></div>
-      </div>
-     )) : (
+       <div key={service.id} onClick={() => { setSelectedService(service); setWizardStep(4); }} className="p-4 rounded-lg border border-white/10 hover:border-cyan-500 hover:bg-white/5 cursor-pointer flex items-center justify-between group transition-all">
+        <div><p className="font-bold text-gray-200">{service.title}</p><p className="text-xs text-slate-400">{service.durationMinutes} min • R$ {service.price.toFixed(2)}</p></div>
+       </div>
+      )) : (
       <div className="text-center py-8 text-slate-400"><p>Nenhum serviço disponível.</p></div>
      )}
     </div>
    </div>
   );
  };
+
+  const getBusinessHoursForDate = (dateStr: string) => {
+      if (!dateStr) return { start: '08:00', end: '18:00', isOpen: true };
+      const dateParts = dateStr.split('-').map(Number);
+      const selDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const dayKey = dayNames[selDate.getDay()];
+      
+      const businessHours = salonConfig?.business_hours 
+       ? (typeof salonConfig.business_hours === 'string' ? JSON.parse(salonConfig.business_hours) : salonConfig.business_hours)
+       : null;
+
+      if (businessHours && businessHours[dayKey]) {
+       return { 
+         start: businessHours[dayKey].start || '08:00', 
+         end: businessHours[dayKey].end || '18:00', 
+         isOpen: businessHours[dayKey].isOpen 
+       };
+      }
+      return { start: '08:00', end: '18:00', isOpen: true };
+  };
+
+  const renderTimeline = () => {
+      if (!wizardDate || !selectedProfessional || !selectedService) return null;
+
+      const { start, end, isOpen } = getBusinessHoursForDate(wizardDate);
+      if (!isOpen) {
+          return (
+              <div className="text-center py-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-xs font-bold uppercase tracking-wider">
+                  O salão está fechado neste dia
+              </div>
+          );
+      }
+
+      const [startH, startM] = start.split(':').map(Number);
+      const [endH, endM] = end.split(':').map(Number);
+      const startMinutes = startH * 60 + startM;
+      const endMinutes = endH * 60 + endM;
+
+      // Generate 30-min slots
+      const slots: string[] = [];
+      for (let m = startMinutes; m < endMinutes; m += 30) {
+          const hour = Math.floor(m / 60).toString().padStart(2, '0');
+          const min = (m % 60).toString().padStart(2, '0');
+          slots.push(`${hour}:${min}`);
+      }
+
+      const now = new Date();
+      const isToday = wizardDate === todayStr;
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+      return (
+          <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+              <label className="block text-[10px] font-black uppercase tracking-[1.5px] text-pink-500">Horários Disponíveis de {selectedProfessional.name}</label>
+              <div className="grid grid-cols-4 gap-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                  {slots.map(slot => {
+                      const [hStr, mStr] = slot.split(':');
+                      const h = parseInt(hStr);
+                      const m = parseInt(mStr);
+                      const slotMinutes = h * 60 + m;
+                      const slotEndMinutes = slotMinutes + selectedService.durationMinutes;
+
+                      // 1. Past check
+                      const isPast = isToday && slotMinutes <= currentMinutes;
+
+                      // 2. Exception check
+                      const dayExceptions = dbExceptions.filter(
+                          ex => ex.date === wizardDate && ex.professional_id === selectedProfessional.id
+                      );
+                      const hasExceptionConflict = dayExceptions.some(ex => {
+                          if (ex.type === 'vacation' || ex.type === 'sick' || ex.type === 'off') return true;
+                          if (ex.type === 'lunch' && ex.start_time && ex.end_time) {
+                              const [exH1, exM1] = ex.start_time.split(':').map(Number);
+                              const [exH2, exM2] = ex.end_time.split(':').map(Number);
+                              const exStart = exH1 * 60 + exM1;
+                              const exEnd = exH2 * 60 + exM2;
+                              return (slotMinutes < exEnd && slotEndMinutes > exStart);
+                          }
+                          return false;
+                      });
+
+                      // 3. Appointment conflict check
+                      const existingApps = (appointments || []).filter(
+                          a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago'
+                      );
+                      const conflictingAppt = existingApps.find(apt => {
+                          const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
+                          const aptEnd = aptStart + apt.durationMinutes;
+                          return (slotMinutes < aptEnd && slotEndMinutes > aptStart);
+                      });
+
+                      let status: 'past' | 'exception' | 'busy' | 'available' = 'available';
+                      let label = slot;
+                      let title = "Disponível";
+
+                      if (isPast) {
+                          status = 'past';
+                          title = 'Horário Passado';
+                      } else if (hasExceptionConflict) {
+                          status = 'exception';
+                          title = 'Indisponível';
+                      } else if (conflictingAppt) {
+                          status = 'busy';
+                          title = `Ocupado: ${conflictingAppt.clientName}`;
+                      }
+
+                      const isSelected = manualTime === slot;
+
+                      let btnClass = "";
+                      if (isSelected) {
+                          btnClass = "bg-cyan-500 text-black border-cyan-400 font-bold scale-95 shadow-[0_0_12px_rgba(0,255,245,0.4)]";
+                      } else if (status === 'past') {
+                          btnClass = "opacity-25 bg-white/5 text-white/10 border-white/5 cursor-not-allowed";
+                      } else if (status === 'exception') {
+                          btnClass = "bg-blue-500/10 text-blue-400 border-blue-500/20 cursor-not-allowed";
+                      } else if (status === 'busy') {
+                          btnClass = "bg-red-500/10 text-red-400 border-red-500/20 cursor-not-allowed";
+                      } else {
+                          btnClass = "bg-white/5 text-white/70 border-white/10 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/40";
+                      }
+
+                      return (
+                          <button
+                              key={slot}
+                              type="button"
+                              disabled={status !== 'available'}
+                              onClick={() => setManualTime(slot)}
+                              title={title}
+                              className={`px-2 py-2 text-[10px] border rounded-xl transition-all text-center flex flex-col items-center justify-center gap-0.5 ${btnClass}`}
+                          >
+                              <span className="block font-black">{slot}</span>
+                              {status === 'busy' && <span className="block text-[6px] opacity-75 truncate max-w-full font-bold">Ocupado</span>}
+                              {status === 'exception' && <span className="block text-[6px] opacity-75 truncate max-w-full font-bold">Intervalo</span>}
+                              {status === 'available' && <span className="block text-[6px] opacity-70 truncate max-w-full font-medium">Livre</span>}
+                          </button>
+                      );
+                  })}
+              </div>
+          </div>
+      );
+  };
 
  const renderStep4 = () => {
   return (
@@ -520,6 +661,9 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
       />
      </div>
     </div>
+
+    {renderTimeline()}
+
     <div className="min-h-[24px]">
      {timeError && <div className="text-red-400 text-sm font-medium">{timeError}</div>}
      {!timeError && manualTime && <div className="text-emerald-400 text-sm font-bold bg-emerald-500/10 p-3 rounded-lg">Horário Disponível • Término: {endTimePreview}</div>}
@@ -527,8 +671,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
    </div>
   );
  };
-
- // --- COMPUTED VALUES FOR SPLIT TIMELINE++ ---
+  // --- COMPUTED VALUES FOR SPLIT TIMELINE++ ---
  const activeProfessional = professionals.find(p => p.id === selectedProfTab);
  const activeAppts = selectedProfTab ? (appointmentsByProf.get(selectedProfTab) || []) : [];
  const filteredAppts = activeAppts.filter(a => statusFilter === 'all' || a.status === statusFilter);
@@ -1008,7 +1151,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
         Continuar<span className="material-symbols-outlined text-lg">arrow_forward</span>
        </button>
       ) : (
-       <button onClick={handleConfirmAppointment} disabled={!selectedTimeSlot || !!timeError} className="flex items-center gap-2 px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-black rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(0,255,245,0.3)] transition-all active:scale-95">
+       <button onClick={handleConfirmAppointment} disabled={!selectedTimeSlot || !!timeError || !wizardDate} className="flex items-center gap-2 px-8 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-black rounded-xl font-bold text-sm shadow-[0_4px_15px_rgba(0,255,245,0.3)] transition-all active:scale-95">
         {isRescheduling ? 'Confirmar Reagendamento' : 'Confirmar Agendamento'}<span className="material-symbols-outlined text-lg">check_circle</span>
        </button>
       )}

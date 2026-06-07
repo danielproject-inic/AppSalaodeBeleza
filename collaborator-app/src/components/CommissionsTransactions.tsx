@@ -41,7 +41,7 @@ const CommissionsTransactions: React.FC<CommissionsTransactionsProps> = ({ commi
                             : 'Site Web'
                 : 'Site Web';
             const displayStatus = c.status === 'paid' ? 'Paga' : 'Prevista';
-            const discount = 0;
+            const discount = c.discountValue || 0;
             const rule = `${c.commissionPercent}%`;
 
             return {

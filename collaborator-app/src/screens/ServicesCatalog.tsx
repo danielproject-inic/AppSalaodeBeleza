@@ -8,11 +8,12 @@ import { useServices, ServiceWithPros } from '../hooks/useServices';
 import { useProfessionals } from '../hooks/useProfessionals';
 import { useCurrentUserRef, ModuleKey } from '../hooks/useCurrentUserRef';
 import { Database } from '../lib/database.types';
+import { supabase } from '../lib/supabase';
 
 type Service = ServiceWithPros;
 
 const ServicesCatalog: React.FC = () => {
-    const { services, loading, error, addService, updateService, deleteService } = useServices();
+    const { services, loading, error, addService, updateService, deleteService, refresh } = useServices();
     const { professionals, loading: proLoading } = useProfessionals();
     const { role, hasAccess } = useCurrentUserRef();
     const canViewAll = role === 'admin' || role === 'manager' || hasAccess('team_view_all');
@@ -22,6 +23,13 @@ const ServicesCatalog: React.FC = () => {
     const [currentServiceId, setCurrentServiceId] = useState<string | null>(null);
     const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
     
+    // Category Manager states
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
+    const [localNewCategories, setLocalNewCategories] = useState<string[]>([]);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [editingCategory, setEditingCategory] = useState<string | null>(null);
+    const [editCategoryName, setEditCategoryName] = useState('');
+
     // Form states
     const [svcName, setSvcName] = useState('');
     const [svcCat, setSvcCat] = useState('Cabelo');
@@ -40,10 +48,76 @@ const ServicesCatalog: React.FC = () => {
     const [filterCategory, setFilterCategory] = useState('');
 
     // Categories list (dynamic)
+    const defaultCategories = ['Cabelo', 'Estética', 'Spa', 'Mão', 'Pés'];
     const categories = useMemo(() => {
-        const cats = new Set(services.map(s => s.category));
-        return Array.from(cats);
-    }, [services]);
+        const cats = new Set([
+            ...defaultCategories,
+            ...services.map(s => s.category).filter(Boolean),
+            ...localNewCategories
+        ]);
+        return Array.from(cats).filter(Boolean);
+    }, [services, localNewCategories]);
+
+    const handleAddCategory = () => {
+        const name = newCategoryName.trim();
+        if (!name) return;
+        const exists = categories.some(cat => cat.toLowerCase() === name.toLowerCase());
+        if (!exists) {
+            setLocalNewCategories(prev => [...prev, name]);
+        }
+        setSvcCat(name);
+        setNewCategoryName('');
+    };
+
+    const handleRenameCategory = async (oldName: string, newName: string) => {
+        const formattedNewName = newName.trim();
+        if (!formattedNewName || oldName === formattedNewName) return;
+
+        try {
+            const { error: updateError } = await supabase
+                .from('services')
+                .update({ category: formattedNewName })
+                .eq('category', oldName);
+
+            if (updateError) throw updateError;
+
+            if (localNewCategories.includes(oldName)) {
+                setLocalNewCategories(prev => prev.map(c => c === oldName ? formattedNewName : c));
+            }
+            if (svcCat === oldName) {
+                setSvcCat(formattedNewName);
+            }
+            if (refresh) {
+                await refresh();
+            }
+        } catch (err: any) {
+            console.error("Erro ao renomear categoria:", err.message);
+        }
+        setEditingCategory(null);
+    };
+
+    const handleDeleteCategory = async (catName: string) => {
+        try {
+            const { error: updateError } = await supabase
+                .from('services')
+                .update({ category: '' })
+                .eq('category', catName);
+
+            if (updateError) throw updateError;
+
+            setLocalNewCategories(prev => prev.filter(c => c !== catName));
+
+            if (svcCat === catName) {
+                setSvcCat(categories[0] || 'Cabelo');
+            }
+
+            if (refresh) {
+                await refresh();
+            }
+        } catch (err: any) {
+            console.error("Erro ao deletar categoria:", err.message);
+        }
+    };
 
     useEffect(() => {
         const cards = document.querySelectorAll(".tilt-card");
@@ -350,7 +424,7 @@ const ServicesCatalog: React.FC = () => {
                               </h2>
                               <div className="flex items-center justify-center gap-3">
                                    <div className="size-1.5 bg-amber-500 animate-pulse rounded-full"></div>
-                                   <span className="stat-badge text-slate-700 uppercase tracking-[0.4em]">Ficha de Registro</span>
+                                   <span className="stat-badge text-white/60 uppercase tracking-[0.4em]">Ficha de Registro</span>
                               </div>
                          </div>
                     </div>
@@ -366,24 +440,27 @@ const ServicesCatalog: React.FC = () => {
                                             placeholder="NOME DO SERVIÇO" 
                                             value={svcName}
                                             onChange={(e) => setSvcName(e.target.value)}
-                                            className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black italic text-lg uppercase outline-none focus:border-amber-500 transition-all placeholder:text-slate-900 text-center"
+                                            className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black text-lg uppercase outline-none focus:border-amber-500 transition-all placeholder:text-white/45 text-center"
                                        />
                                   </div>
                                   <div className="space-y-2 flex flex-col items-center relative">
                                        <div className="flex items-center justify-center gap-2">
                                             <label className="stat-badge text-amber-500 uppercase tracking-[0.4em]">Categoria</label>
-                                            <button className="size-5 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-black transition-all mb-0.5"><Plus size={12} /></button>
+                                            <button 
+                                                onClick={() => setShowCategoryManager(true)}
+                                                className="size-5 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-black transition-all mb-0.5"
+                                            >
+                                                <Plus size={12} />
+                                            </button>
                                        </div>
                                        <select 
                                             value={svcCat}
                                             onChange={(e) => setSvcCat(e.target.value)}
                                             className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black uppercase text-md outline-none focus:border-amber-500 transition-all appearance-none cursor-pointer text-center"
                                        >
-                                            <option value="Cabelo" className="bg-[#0f172a]">CABELO</option>
-                                            <option value="Estética" className="bg-[#0f172a]">ESTÉTICA</option>
-                                            <option value="Spa" className="bg-[#0f172a]">SPA</option>
-                                            <option value="Mão" className="bg-[#0f172a]">MÃO</option>
-                                            <option value="Pés" className="bg-[#0f172a]">PÉS</option>
+                                            {categories.map(cat => (
+                                                <option key={cat} value={cat} className="bg-[#0f172a]">{cat.toUpperCase()}</option>
+                                            ))}
                                        </select>
                                   </div>
                              </div>
@@ -392,13 +469,13 @@ const ServicesCatalog: React.FC = () => {
                                   <div className="space-y-2 flex flex-col items-center">
                                        <label className="stat-badge text-amber-500 uppercase tracking-[0.4em]">Financeiro</label>
                                        <div className="relative w-full flex justify-center items-center">
-                                            <span className="absolute left-4 bottom-3 text-slate-800 font-black text-sm">R$</span>
+                                            <span className="absolute left-4 bottom-3 text-amber-500/80 font-black text-sm">R$</span>
                                             <input 
                                                 type="number" 
                                                 placeholder="00.00" 
                                                 value={svcPrice}
                                                 onChange={(e) => setSvcPrice(e.target.value)}
-                                                className="w-full bg-transparent border-b border-white/10 py-2 text-white font-black text-2xl outline-none focus:border-amber-500 transition-all font-mono tracking-tighter text-center"
+                                                className="w-full bg-transparent border-b border-white/10 py-2 text-white font-black text-2xl outline-none focus:border-amber-500 transition-all font-mono tracking-normal text-center placeholder:text-white/45"
                                             />
                                        </div>
                                   </div>
@@ -410,9 +487,9 @@ const ServicesCatalog: React.FC = () => {
                                                 placeholder="00" 
                                                 value={commission}
                                                 onChange={(e) => setCommission(e.target.value)}
-                                                className="w-full bg-transparent border-b border-white/10 py-2 text-white font-black text-2xl outline-none focus:border-amber-500 transition-all font-mono tracking-tighter text-center"
+                                                className="w-full bg-transparent border-b border-white/10 py-2 text-white font-black text-2xl outline-none focus:border-amber-500 transition-all font-mono tracking-normal text-center placeholder:text-white/45"
                                             />
-                                            <span className="absolute right-4 bottom-3 text-slate-800 font-extrabold text-lg">%</span>
+                                            <span className="absolute right-4 bottom-3 text-amber-500/80 font-extrabold text-lg">%</span>
                                        </div>
                                   </div>
                              </div>
@@ -426,9 +503,9 @@ const ServicesCatalog: React.FC = () => {
                                                 placeholder="00" 
                                                 value={svcTime}
                                                 onChange={(e) => setSvcTime(e.target.value)}
-                                                className="w-full bg-transparent border-b border-white/10 py-2 text-white font-black text-3xl outline-none focus:border-amber-500 transition-all font-mono text-center tracking-tighter"
+                                                className="w-full bg-transparent border-b border-white/10 py-2 text-white font-black text-3xl outline-none focus:border-amber-500 transition-all font-mono text-center tracking-normal placeholder:text-white/45"
                                             />
-                                            <span className="absolute right-2 bottom-3 text-slate-800 font-black text-[9px]">MIN</span>
+                                            <span className="absolute right-2 bottom-3 text-amber-500/80 font-black text-[9px]">MIN</span>
                                        </div>
                                   </div>
                              </div>
@@ -439,7 +516,7 @@ const ServicesCatalog: React.FC = () => {
                                     placeholder="DESCREVA OS DETALHES TÉCNICOS..." 
                                     value={svcDesc}
                                     onChange={(e) => setSvcDesc(e.target.value)}
-                                    className="w-full bg-white/5 border border-white/10 rounded-[1rem] p-6 text-white font-medium text-sm outline-none focus:border-amber-500/50 transition-all h-28 resize-none placeholder:text-slate-800 text-center"
+                                    className="w-full bg-white/5 border border-white/10 rounded-[1rem] p-6 text-white font-medium text-sm outline-none focus:border-amber-500/50 transition-all h-28 resize-none placeholder:text-white/45 text-center"
                                   ></textarea>
                              </div>
                          </div>
@@ -455,7 +532,7 @@ const ServicesCatalog: React.FC = () => {
                                             className={`px-7 py-4 border-2 font-black rounded-[1rem] text-[9px] uppercase tracking-widest transition-all ${
                                                 selectedCollabs.includes(collab.id) 
                                                 ? 'border-amber-500 bg-amber-500/10 text-amber-500 shadow-lg' 
-                                                : 'border-white/5 bg-white/5 text-slate-600 hover:text-white'
+                                                : 'border-white/5 bg-white/5 text-slate-400 hover:text-white'
                                             }`}
                                         >
                                             {collab.name}
@@ -469,7 +546,7 @@ const ServicesCatalog: React.FC = () => {
                     <div className="mt-auto pt-16 flex gap-5 w-full">
                          <button 
                             onClick={() => setIsPanelOpen(false)} 
-                            className="flex-1 py-6 border border-white/5 text-slate-700 font-black text-[9px] uppercase tracking-[0.4em] rounded-[1rem] hover:text-white transition-all"
+                            className="flex-1 py-6 border border-white/5 text-slate-300 font-black text-[9px] uppercase tracking-[0.4em] rounded-[1rem] hover:text-amber-500 hover:border-amber-500/30 transition-all"
                          >
                             Cancelar
                          </button>
@@ -511,6 +588,129 @@ const ServicesCatalog: React.FC = () => {
                                 className="flex-1 py-3 px-4 rounded-lg bg-red-500 text-white font-black text-[10px] uppercase tracking-[0.2em] shadow-lg transition-all hover:bg-red-600"
                             >
                                 Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Category Manager Modal */}
+            {showCategoryManager && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[200] flex items-center justify-center">
+                    <div className="bg-[#0f172a] border border-white/10 rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl animate-in fade-in zoom-in duration-200 glass-hud flex flex-col max-h-[85vh]">
+                        
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-6 pb-4 border-b border-white/5">
+                            <div className="flex items-center gap-2">
+                                <Layers size={18} className="text-amber-500" />
+                                <h3 className="text-lg font-black text-white uppercase tracking-tighter italic">Gerenciar Categorias</h3>
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setShowCategoryManager(false);
+                                    setEditingCategory(null);
+                                }}
+                                className="size-8 border border-white/10 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all hover:bg-white/5"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Add New Category */}
+                        <div className="mb-6 space-y-2">
+                            <label className="stat-badge text-slate-400 uppercase tracking-widest text-[8px] block">Nova Categoria</label>
+                            <div className="flex gap-2">
+                                <input 
+                                    type="text" 
+                                    placeholder="NOME DA CATEGORIA..." 
+                                    value={newCategoryName}
+                                    onChange={(e) => setNewCategoryName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') handleAddCategory();
+                                    }}
+                                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white font-bold text-xs uppercase outline-none focus:border-amber-500/50 transition-all placeholder:text-slate-600"
+                                />
+                                <button 
+                                    onClick={handleAddCategory}
+                                    className="px-4 bg-amber-500 text-black font-black text-[10px] uppercase tracking-wider rounded-lg hover:bg-white transition-all flex items-center gap-1.5"
+                                >
+                                    <Plus size={12} />
+                                    Adicionar
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* List of Categories */}
+                        <label className="stat-badge text-slate-400 uppercase tracking-widest text-[8px] mb-2 block">Categorias Existentes</label>
+                        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar max-h-[40vh]">
+                            {categories.map(cat => {
+                                const isEditingThis = editingCategory === cat;
+                                return (
+                                    <div key={cat} className="flex items-center justify-between p-3 bg-white/3 border border-white/5 rounded-lg hover:bg-white/5 transition-all">
+                                        {isEditingThis ? (
+                                            <div className="flex-1 flex gap-2 items-center mr-2">
+                                                <input 
+                                                    type="text" 
+                                                    value={editCategoryName}
+                                                    onChange={(e) => setEditCategoryName(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') handleRenameCategory(cat, editCategoryName);
+                                                    }}
+                                                    className="flex-1 bg-white/5 border border-amber-500/30 rounded px-2 py-1 text-white font-bold text-xs uppercase outline-none"
+                                                    autoFocus
+                                                />
+                                                <button 
+                                                    onClick={() => handleRenameCategory(cat, editCategoryName)}
+                                                    className="size-7 bg-green-500/10 border border-green-500/20 text-green-500 rounded flex items-center justify-center hover:bg-green-500 hover:text-black transition-all"
+                                                >
+                                                    <Check size={12} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => setEditingCategory(null)}
+                                                    className="size-7 bg-white/5 border border-white/10 text-slate-500 rounded flex items-center justify-center hover:text-white transition-all"
+                                                >
+                                                    <X size={12} />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <span className="text-white font-black tracking-wider text-xs uppercase">{cat}</span>
+                                                <div className="flex gap-1.5">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setEditingCategory(cat);
+                                                            setEditCategoryName(cat);
+                                                        }}
+                                                        className="size-7 bg-white/5 border border-white/10 text-slate-400 rounded flex items-center justify-center hover:bg-amber-500 hover:text-black hover:border-amber-500 transition-all"
+                                                        title="Renomear"
+                                                    >
+                                                        <Edit3 size={12} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => handleDeleteCategory(cat)}
+                                                        className="size-7 bg-white/5 border border-white/10 text-slate-400 rounded flex items-center justify-center hover:bg-red-500 hover:text-white hover:border-red-500 transition-all"
+                                                        title="Excluir"
+                                                    >
+                                                        <Trash2 size={12} />
+                                                    </button>
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="mt-6 pt-4 border-t border-white/5 flex">
+                            <button
+                                onClick={() => {
+                                    setShowCategoryManager(false);
+                                    setEditingCategory(null);
+                                }}
+                                className="w-full py-3 rounded-lg border border-white/10 text-slate-400 hover:text-white font-black text-[10px] uppercase tracking-widest bg-white/5 transition-all text-center"
+                            >
+                                Fechar
                             </button>
                         </div>
                     </div>

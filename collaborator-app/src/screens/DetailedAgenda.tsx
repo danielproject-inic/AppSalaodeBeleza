@@ -32,6 +32,7 @@ interface Service {
  title: string;
  durationMinutes: number;
  price: number;
+ is_variable_price?: boolean;
  assignedCollabs: string[]; 
 }
 
@@ -122,6 +123,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
    title: s.title,
    durationMinutes: s.duration_minutes || 30,
    price: s.price || 0,
+   is_variable_price: s.is_variable_price || false,
    assignedCollabs: (s as any).professionals ? (s as any).professionals.map((p: any) => p.professional?.id).filter(Boolean) : []
   }));
  }, [dbServices]);
@@ -487,7 +489,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
     <div className="max-h-[350px] overflow-y-auto space-y-2 custom-scrollbar">
      {availableServices.length > 0 ? availableServices.map(service => (
       <div key={service.id} onClick={() => { setSelectedService(service); setWizardStep(4); }} className="p-4 rounded-lg border border-white/10 hover:border-cyan-500 hover:bg-white/5 cursor-pointer flex items-center justify-between group transition-all">
-       <div><p className="font-bold text-gray-200">{service.title}</p><p className="text-xs text-slate-400">{service.durationMinutes} min • R$ {service.price.toFixed(2)}</p></div>
+       <div><p className="font-bold text-gray-200">{service.title}</p><p className="text-xs text-slate-400">{service.durationMinutes} min • {service.is_variable_price ? 'A partir de ' : ''}R$ {service.price.toFixed(2)}</p></div>
       </div>
      )) : (
       <div className="text-center py-8 text-slate-400"><p>Nenhum serviço disponível.</p></div>
@@ -963,7 +965,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
               </div>
               <div className="flex items-center gap-4 mt-3">
                <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>schedule</span>{apt.durationMinutes} min</span>
-               <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>payments</span>R$ {svc?.price.toFixed(2) || '---'}</span>
+               <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>payments</span>{svc?.is_variable_price ? 'A partir de ' : ''}R$ {svc?.price.toFixed(2) || '---'}</span>
                <span className="text-[10px] font-semibold text-cyan-400 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>call</span>{clients.find(c=>c.name===apt.clientName)?.phone || '(00) 0000-0000'}</span>
                
                <div className="flex gap-1 ml-auto opacity-0 group-hover/card:opacity-100 transition-opacity">

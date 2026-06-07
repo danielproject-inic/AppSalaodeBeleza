@@ -38,6 +38,7 @@ interface ServiceItem {
     endTime?: string;
     scheduledDate?: string;
     servicoIniciadoAt?: string;
+    is_variable_price?: boolean;
 }
 
 interface Bill {
@@ -70,6 +71,7 @@ interface Service {
     title: string;
     cat: string;
     price: number;
+    is_variable_price?: boolean;
 }
 
 // Helper for safe localStorage access
@@ -196,6 +198,7 @@ const CashFlow: React.FC = () => {
                 title: s.title,
                 cat: s.category || 'Geral',
                 price: s.price || 0,
+                is_variable_price: s.is_variable_price || false,
                 allowedPros: (specificPros && specificPros.length > 0) ? specificPros : professionalsList,
                 commissionPercentage: s.commission_percentage
             };
@@ -317,7 +320,8 @@ const CashFlow: React.FC = () => {
             startTime: client.time,
             endTime: client.endTime,
             scheduledDate: client.date,
-            servicoIniciadoAt: client.servicoIniciadoAt
+            servicoIniciadoAt: client.servicoIniciadoAt,
+            is_variable_price: serviceDetails?.is_variable_price
         }]);
         setTransProf(client.professional); // Set summary professional
         setPaymentStage('selection'); // Reset stage
@@ -337,7 +341,8 @@ const CashFlow: React.FC = () => {
             price: service.price,
             professional: defaultPro,
             allowedPros: service.allowedPros, // Pass allowed list to item
-            commissionPercentage: service.commissionPercentage || 0
+            commissionPercentage: service.commissionPercentage || 0,
+            is_variable_price: service.is_variable_price
         }]);
         setServiceSearch('');
     };
@@ -363,7 +368,8 @@ const CashFlow: React.FC = () => {
             price: tempSelService.price,
             professional: tempSelPro,
             allowedPros: sWithPros?.allowedPros, // Keep reference
-            commissionPercentage: sWithPros?.commissionPercentage || 0
+            commissionPercentage: sWithPros?.commissionPercentage || 0,
+            is_variable_price: sWithPros?.is_variable_price
         }]);
         setModalMode('payment'); // Go back to payment
     };
@@ -375,6 +381,10 @@ const CashFlow: React.FC = () => {
 
     const handleUpdateItemProfessional = (index: number, newPro: string) => {
         setCartItems(prev => prev.map((item, i) => i === index ? { ...item, professional: newPro } : item));
+    };
+
+    const handleUpdateItemPrice = (index: number, newPrice: number) => {
+        setCartItems(prev => prev.map((item, i) => i === index ? { ...item, price: newPrice } : item));
     };
 
     const handleProcessPayment = async () => {
@@ -1142,7 +1152,21 @@ const CashFlow: React.FC = () => {
                                                                 </p>
                                                             </div>
                                                         </div>
-                                                        <span className="font-mono font-black text-white text-lg">{formatCurrency(item.price)}</span>
+                                                        {item.is_variable_price ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-xs font-bold text-white/50">R$</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="0.01"
+                                                                    value={item.price || ''}
+                                                                    onChange={e => handleUpdateItemPrice(idx, parseFloat(e.target.value) || 0)}
+                                                                    className="w-24 bg-[#1e293b] border border-white/10 rounded-xl px-2.5 py-1 text-right font-mono font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <span className="font-mono font-black text-white text-lg">{formatCurrency(item.price)}</span>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>

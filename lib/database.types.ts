@@ -672,6 +672,7 @@ export type Database = {
           duration_minutes: number | null
           id: string
           image_url: string | null
+          is_variable_price: boolean | null
           price: number | null
           title: string
           updated_at: string | null
@@ -684,6 +685,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           image_url?: string | null
+          is_variable_price?: boolean | null
           price?: number | null
           title: string
           updated_at?: string | null
@@ -696,6 +698,7 @@ export type Database = {
           duration_minutes?: number | null
           id?: string
           image_url?: string | null
+          is_variable_price?: boolean | null
           price?: number | null
           title?: string
           updated_at?: string | null

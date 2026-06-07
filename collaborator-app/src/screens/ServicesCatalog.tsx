@@ -37,6 +37,7 @@ const ServicesCatalog: React.FC = () => {
     const [svcTime, setSvcTime] = useState('');
     const [svcPrice, setSvcPrice] = useState('');
     const [commission, setCommission] = useState('');
+    const [isVariablePrice, setIsVariablePrice] = useState(false);
     const [selectedCollabs, setSelectedCollabs] = useState<string[]>([]);
     const [searchCollab, setSearchCollab] = useState('');
     const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -146,6 +147,7 @@ const ServicesCatalog: React.FC = () => {
         setSvcTime('');
         setSvcPrice('');
         setCommission('');
+        setIsVariablePrice(false);
         setSelectedCollabs([]);
         setSearchCollab('');
         setImagePreview(null);
@@ -160,6 +162,7 @@ const ServicesCatalog: React.FC = () => {
         setSvcDesc(s.description || '');
         setSvcTime(s.duration_minutes?.toString() || '');
         setSvcPrice(s.price?.toString() || '');
+        setIsVariablePrice(s.is_variable_price || false);
         setImagePreview(s.image_url);
         const assignedIds = s.professionals ? s.professionals.map(p => p.professional?.id).filter(Boolean) as string[] : [];
         setSelectedCollabs(assignedIds);
@@ -170,14 +173,15 @@ const ServicesCatalog: React.FC = () => {
     };
 
     const handleSaveService = async () => {
-        const serviceData = {
+        const serviceData: any = {
             title: svcName,
             category: svcCat,
             description: svcDesc,
             price: parseFloat(svcPrice) || 0,
             duration_minutes: parseInt(svcTime) || 0,
             image_url: imagePreview || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=1000',
-            commission_percentage: parseFloat(commission) || 0
+            commission_percentage: parseFloat(commission) || 0,
+            is_variable_price: isVariablePrice
         };
 
         if (isEditing && currentServiceId) {
@@ -390,7 +394,7 @@ const ServicesCatalog: React.FC = () => {
                                          </div>
                                     </div>
                                     <div className="text-right flex flex-col items-center">
-                                         <span className="stat-badge text-slate-700 uppercase tracking-widest mb-1 text-[7px]">TOTAL</span>
+                                         <span className="stat-badge text-slate-700 uppercase tracking-widest mb-1 text-[7px]">{s.is_variable_price ? 'A PARTIR DE' : 'TOTAL'}</span>
                                          <div className="flex items-baseline justify-end gap-1">
                                               <span className="text-[10px] font-black text-slate-600">R$</span>
                                               <span className="text-3xl font-black text-white tracking-tighter text-glow">{s.price}</span>
@@ -492,6 +496,18 @@ const ServicesCatalog: React.FC = () => {
                                             <span className="absolute right-4 bottom-3 text-amber-500/80 font-extrabold text-lg">%</span>
                                        </div>
                                   </div>
+                             </div>
+
+                             <div className="flex justify-center items-center gap-3 bg-white/5 border border-white/5 rounded-xl p-4 w-full">
+                                  <label className="text-white text-xs font-bold uppercase tracking-wider cursor-pointer flex items-center gap-3 select-none">
+                                       <input
+                                            type="checkbox"
+                                            checked={isVariablePrice}
+                                            onChange={(e) => setIsVariablePrice(e.target.checked)}
+                                            className="size-4 rounded border-white/10 bg-transparent text-amber-500 focus:ring-0 focus:ring-offset-0 cursor-pointer"
+                                       />
+                                       Preço Variável (A partir de)
+                                  </label>
                              </div>
 
                              <div className="grid grid-cols-1 gap-8">

@@ -536,105 +536,320 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
       const [endH, endM] = end.split(':').map(Number);
       const startMinutes = startH * 60 + startM;
       const endMinutes = endH * 60 + endM;
+      const totalMinutes = endMinutes - startMinutes;
 
-      // Generate 30-min slots
-      const slots: string[] = [];
-      for (let m = startMinutes; m < endMinutes; m += 30) {
-          const hour = Math.floor(m / 60).toString().padStart(2, '0');
-          const min = (m % 60).toString().padStart(2, '0');
-          slots.push(`${hour}:${min}`);
+       const hourMarkers: { label: string; offsetPercent: number }[] = [];
+       for (let h = startH; h <= endH; h++) {
+           const m = h * 60;
+           const pct = ((m - startMinutes) / totalMinutes) * 100;
+           if (pct >= 0 && pct <= 100) {
+               hourMarkers.push({
+                   label: `${h.toString().padStart(2, '0')}:00`,
+                   offsetPercent: pct
+               });
+           }
+       }
+
+       const dayExceptions = dbExceptions.filter(
+           ex => ex.date === wizardDate && ex.professional_id === selectedProfessional.id
+       );
+
+       const existingApps = (appointments || []).filter(
+           a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago'
+       );
+
+       // Build the smart ruler labels (green for free hours, red for occupied start/end times)
+       const rulerLabels: { label: string; offsetPercent: number; type: 'free' | 'occupied' | 'exception' }[] = [];
+
+       // 1. Add regular hour markers (if free)
+       for (let h = startH; h <= endH; h++) {
+           const m = h * 60;
+           const pct = ((m - startMinutes) / totalMinutes) * 100;
+           if (pct >= 0 && pct <= 100) {
+               const isApptOccupied = existingApps.some(apt => {
+                   const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
+                   const aptEnd = aptStart + apt.durationMinutes;
+                   return m >= aptStart && m < aptEnd;
+               });
+
+               const isExOccupied = dayExceptions.some(ex => {
+                   if (ex.type === 'vacation' || ex.type === 'sick' || ex.type === 'off') return true;
+                   if (ex.type === 'lunch' && ex.start_time && ex.end_time) {
+                       const [exH1, exM1] = ex.start_time.split(':').map(Number);
+                       const [exH2, exM2] = ex.end_time.split(':').map(Number);
+                       const exStart = exH1 * 60 + exM1;
+                       const exEnd = exH2 * 60 + exM2;
+                       return m >= exStart && m < exEnd;
+                   }
+                   return false;
+               });
+
+               if (!isApptOccupied && !isExOccupied) {
+                   rulerLabels.push({
+                       label: `${h.toString().padStart(2, '0')}:00`,
+                       offsetPercent: pct,
+                       type: 'free'
+                   });
+               }
+           }
+       }
+
+       // 2. Add exact start/end times of occupied appointments (marked red)
+       existingApps.forEach(apt => {
+           const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
+           const aptEnd = aptStart + apt.durationMinutes;
+
+           const startPct = ((aptStart - startMinutes) / totalMinutes) * 100;
+           const endPct = ((aptEnd - startMinutes) / totalMinutes) * 100;
+
+           rulerLabels.push({
+               label: `${apt.startHour}:${apt.startMinute}`,
+               offsetPercent: startPct,
+               type: 'occupied'
+           });
+
+           rulerLabels.push({
+               label: `${apt.endHour}:${apt.endMinute}`,
+               offsetPercent: endPct,
+               type: 'occupied'
+            });
+       });
+
+       // 3. Add exception/lunch start/end times (marked red as well, since they block the time)
+       dayExceptions.forEach(ex => {
+           if (ex.type === 'lunch' && ex.start_time && ex.end_time) {
+               const [exH1, exM1] = ex.start_time.split(':').map(Number);
+               const [exH2, exM2] = ex.end_time.split(':').map(Number);
+               const exStart = exH1 * 60 + exM1;
+               const exEnd = exH2 * 60 + exM2;
+
+               const startPct = ((exStart - startMinutes) / totalMinutes) * 100;
+               const endPct = ((exEnd - startMinutes) / totalMinutes) * 100;
+
+               rulerLabels.push({
+                   label: ex.start_time,
+                   offsetPercent: startPct,
+                   type: 'exception'
+               });
+               rulerLabels.push({
+                   label: ex.end_time,
+                   offsetPercent: endPct,
+                   type: 'exception'
+               });
+           }
+       });
+
+       // 4. Sort and deduplicate to avoid overlapping text (priority to occupied/exception labels)
+       rulerLabels.sort((a, b) => a.offsetPercent - b.offsetPercent);
+       const filteredRulerLabels: typeof rulerLabels = [];
+       rulerLabels.forEach(label => {
+           const tooCloseIndex = filteredRulerLabels.findIndex(existing => 
+               Math.abs(existing.offsetPercent - label.offsetPercent) < 4.5
+           );
+
+           if (tooCloseIndex !== -1) {
+               const existing = filteredRulerLabels[tooCloseIndex];
+               if (label.type !== 'free' && existing.type === 'free') {
+                   filteredRulerLabels[tooCloseIndex] = label;
+               }
+           } else {
+               filteredRulerLabels.push(label);
+           }
+       });
+
+      const apptBlocks = existingApps.map(apt => {
+          const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
+          const aptEnd = aptStart + apt.durationMinutes;
+          const left = Math.max(0, ((aptStart - startMinutes) / totalMinutes) * 100);
+          const right = Math.min(100, ((aptEnd - startMinutes) / totalMinutes) * 100);
+          const width = right - left;
+          return {
+              id: apt.id,
+              clientName: apt.clientName,
+              left,
+              width,
+              label: `${apt.startHour}:${apt.startMinute} - Ocupado: ${apt.clientName}`
+          };
+      });
+
+      const exceptionBlocks: any[] = [];
+      dayExceptions.forEach(ex => {
+          if (ex.type === 'vacation' || ex.type === 'sick' || ex.type === 'off') {
+              exceptionBlocks.push({
+                  left: 0,
+                  width: 100,
+                  label: ex.type === 'vacation' ? 'Férias' : ex.type === 'sick' ? 'Licença' : 'Folga'
+              });
+          } else if (ex.type === 'lunch' && ex.start_time && ex.end_time) {
+              const [exH1, exM1] = ex.start_time.split(':').map(Number);
+              const [exH2, exM2] = ex.end_time.split(':').map(Number);
+              const exStart = exH1 * 60 + exM1;
+              const exEnd = exH2 * 60 + exM2;
+              const left = Math.max(0, ((exStart - startMinutes) / totalMinutes) * 100);
+              const right = Math.min(100, ((exEnd - startMinutes) / totalMinutes) * 100);
+              const width = right - left;
+              exceptionBlocks.push({
+                  left,
+                  width,
+                  label: 'Intervalo'
+              });
+          }
+      });
+
+      let selectedBlock: any = null;
+      if (manualTime) {
+          const [selH, selM] = manualTime.split(':').map(Number);
+          const selStart = selH * 60 + selM;
+          const selEnd = selStart + selectedService.durationMinutes;
+          const left = Math.max(0, ((selStart - startMinutes) / totalMinutes) * 100);
+          const right = Math.min(100, ((selEnd - startMinutes) / totalMinutes) * 100);
+          const width = right - left;
+          selectedBlock = { left, width };
       }
 
-      const now = new Date();
+      const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const clickX = e.clientX - rect.left;
+          const pct = Math.max(0, Math.min(1, clickX / rect.width));
+          const clickedM = startMinutes + pct * totalMinutes;
+          const roundedM = Math.round(clickedM / 15) * 15;
+          const finalM = Math.max(startMinutes, Math.min(endMinutes - selectedService.durationMinutes, roundedM));
+          const hour = Math.floor(finalM / 60).toString().padStart(2, '0');
+          const min = (finalM % 60).toString().padStart(2, '0');
+          setManualTime(`${hour}:${min}`);
+      };
+
+      const suggestions: string[] = [];
       const isToday = wizardDate === todayStr;
+      const now = new Date();
       const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
+      for (let m = startMinutes; m <= endMinutes - selectedService.durationMinutes; m += 15) {
+          if (isToday && m <= currentMinutes) continue;
+
+          const endM = m + selectedService.durationMinutes;
+
+          const hasExceptionConflict = dayExceptions.some(ex => {
+              if (ex.type === 'vacation' || ex.type === 'sick' || ex.type === 'off') return true;
+              if (ex.type === 'lunch' && ex.start_time && ex.end_time) {
+                  const [exH1, exM1] = ex.start_time.split(':').map(Number);
+                  const [exH2, exM2] = ex.end_time.split(':').map(Number);
+                  const exStart = exH1 * 60 + exM1;
+                  const exEnd = exH2 * 60 + exM2;
+                  return (m < exEnd && endM > exStart);
+              }
+              return false;
+          });
+          if (hasExceptionConflict) continue;
+
+          const hasApptConflict = existingApps.some(apt => {
+              const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
+              const aptEnd = aptStart + apt.durationMinutes;
+              return (m < aptEnd && endM > aptStart);
+          });
+          if (hasApptConflict) continue;
+
+          const hour = Math.floor(m / 60).toString().padStart(2, '0');
+          const min = (m % 60).toString().padStart(2, '0');
+          suggestions.push(`${hour}:${min}`);
+      }
+
       return (
-          <div className="space-y-3 p-4 rounded-xl bg-white/[0.02] border border-white/5">
-              <label className="block text-[10px] font-black uppercase tracking-[1.5px] text-pink-500">Horários Disponíveis de {selectedProfessional.name}</label>
-              <div className="grid grid-cols-4 gap-2 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
-                  {slots.map(slot => {
-                      const [hStr, mStr] = slot.split(':');
-                      const h = parseInt(hStr);
-                      const m = parseInt(mStr);
-                      const slotMinutes = h * 60 + m;
-                      const slotEndMinutes = slotMinutes + selectedService.durationMinutes;
+          <div className="space-y-4 p-4 rounded-xl bg-white/[0.02] border border-white/5">
+              <label className="block text-[10px] font-black uppercase tracking-[1.5px] text-pink-500">Linha do Tempo de {selectedProfessional.name}</label>
+              
+              <div className="relative">
+                  <div className="flex justify-between text-[11px] font-bold mb-1.5 relative h-4 select-none">
+                      {filteredRulerLabels.map((marker, i) => {
+                          const isFree = marker.type === 'free';
+                          return (
+                              <span 
+                                  key={i} 
+                                  className={`absolute -translate-x-1/2 font-black transition-colors ${isFree ? 'text-emerald-400' : 'text-red-400'}`} 
+                                  style={{ left: `${marker.offsetPercent}%` }}
+                              >
+                                  {marker.label}
+                              </span>
+                          );
+                      })}
+                  </div>
+                  <div className="h-1" />
 
-                      // 1. Past check
-                      const isPast = isToday && slotMinutes <= currentMinutes;
+                  <div 
+                      onClick={handleTimelineClick}
+                      className="relative w-full h-14 bg-white/5 rounded-xl border border-white/10 overflow-hidden cursor-pointer hover:border-cyan-500/30 transition-colors"
+                  >
+                      {hourMarkers.map((marker, i) => (
+                          <div 
+                              key={i} 
+                              className="absolute top-0 bottom-0 border-l border-white/[0.03] pointer-events-none" 
+                              style={{ left: `${marker.offsetPercent}%` }}
+                          />
+                      ))}
 
-                      // 2. Exception check
-                      const dayExceptions = dbExceptions.filter(
-                          ex => ex.date === wizardDate && ex.professional_id === selectedProfessional.id
-                      );
-                      const hasExceptionConflict = dayExceptions.some(ex => {
-                          if (ex.type === 'vacation' || ex.type === 'sick' || ex.type === 'off') return true;
-                          if (ex.type === 'lunch' && ex.start_time && ex.end_time) {
-                              const [exH1, exM1] = ex.start_time.split(':').map(Number);
-                              const [exH2, exM2] = ex.end_time.split(':').map(Number);
-                              const exStart = exH1 * 60 + exM1;
-                              const exEnd = exH2 * 60 + exM2;
-                              return (slotMinutes < exEnd && slotEndMinutes > exStart);
-                          }
-                          return false;
-                      });
-
-                      // 3. Appointment conflict check
-                      const existingApps = (appointments || []).filter(
-                          a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago'
-                      );
-                      const conflictingAppt = existingApps.find(apt => {
-                          const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
-                          const aptEnd = aptStart + apt.durationMinutes;
-                          return (slotMinutes < aptEnd && slotEndMinutes > aptStart);
-                      });
-
-                      let status: 'past' | 'exception' | 'busy' | 'available' = 'available';
-                      let label = slot;
-                      let title = "Disponível";
-
-                      if (isPast) {
-                          status = 'past';
-                          title = 'Horário Passado';
-                      } else if (hasExceptionConflict) {
-                          status = 'exception';
-                          title = 'Indisponível';
-                      } else if (conflictingAppt) {
-                          status = 'busy';
-                          title = `Ocupado: ${conflictingAppt.clientName}`;
-                      }
-
-                      const isSelected = manualTime === slot;
-
-                      let btnClass = "";
-                      if (isSelected) {
-                          btnClass = "bg-cyan-500 text-black border-cyan-400 font-bold scale-95 shadow-[0_0_12px_rgba(0,255,245,0.4)]";
-                      } else if (status === 'past') {
-                          btnClass = "opacity-25 bg-white/5 text-white/10 border-white/5 cursor-not-allowed";
-                      } else if (status === 'exception') {
-                          btnClass = "bg-blue-500/10 text-blue-400 border-blue-500/20 cursor-not-allowed";
-                      } else if (status === 'busy') {
-                          btnClass = "bg-red-500/10 text-red-400 border-red-500/20 cursor-not-allowed";
-                      } else {
-                          btnClass = "bg-white/5 text-white/70 border-white/10 hover:bg-cyan-500/20 hover:text-cyan-400 hover:border-cyan-500/40";
-                      }
-
-                      return (
-                          <button
-                              key={slot}
-                              type="button"
-                              disabled={status !== 'available'}
-                              onClick={() => setManualTime(slot)}
-                              title={title}
-                              className={`px-2 py-2 text-[10px] border rounded-xl transition-all text-center flex flex-col items-center justify-center gap-0.5 ${btnClass}`}
+                      {exceptionBlocks.map((block, i) => (
+                          <div 
+                              key={`ex-${i}`}
+                              className="absolute top-0 bottom-0 bg-amber-500/10 border-x border-amber-500/20 text-amber-500 text-[8px] font-extrabold flex items-center justify-center p-1 text-center pointer-events-none"
+                              style={{ left: `${block.left}%`, width: `${block.width}%` }}
                           >
-                              <span className="block font-black">{slot}</span>
-                              {status === 'busy' && <span className="block text-[6px] opacity-75 truncate max-w-full font-bold">Ocupado</span>}
-                              {status === 'exception' && <span className="block text-[6px] opacity-75 truncate max-w-full font-bold">Intervalo</span>}
-                              {status === 'available' && <span className="block text-[6px] opacity-70 truncate max-w-full font-medium">Livre</span>}
-                          </button>
-                      );
-                  })}
+                              {block.label}
+                          </div>
+                      ))}
+
+                      {apptBlocks.map((block, i) => (
+                          <div 
+                              key={`apt-${i}`}
+                              className="absolute top-0 bottom-0 bg-red-500/20 border-x border-red-500/30 text-red-400 text-[8px] font-extrabold flex items-center justify-center p-1 text-center pointer-events-none"
+                              style={{ left: `${block.left}%`, width: `${block.width}%` }}
+                              title={block.label}
+                          >
+                              <span className="truncate max-w-full">{block.clientName} (Ocupado)</span>
+                          </div>
+                      ))}
+
+                      {selectedBlock && (
+                          <div 
+                              className="absolute top-0 bottom-0 bg-cyan-500/20 border-x border-cyan-400 shadow-[0_0_12px_rgba(0,255,245,0.2)] animate-pulse pointer-events-none flex items-center justify-center"
+                              style={{ left: `${selectedBlock.left}%`, width: `${selectedBlock.width}%` }}
+                          >
+                              <span className="text-cyan-400 text-[8px] font-black uppercase tracking-wider">Novo</span>
+                          </div>
+                      )}
+                  </div>
+              </div>
+
+              <p className="text-[8px] text-slate-500 text-center font-bold italic">
+                  Dica: Clique em qualquer área livre da barra acima para selecionar o horário de início (arredondado de 15 em 15 minutos).
+              </p>
+
+              <div className="space-y-2 pt-2 border-t border-white/5">
+                  <span className="block text-[8px] font-black uppercase tracking-[1px] text-slate-400">Sugestões de Horários Livres ({suggestions.length})</span>
+                  {suggestions.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 max-h-[120px] overflow-y-auto pr-1 custom-scrollbar">
+                          {suggestions.map(timeStr => {
+                              const isSelected = manualTime === timeStr;
+                              return (
+                                  <button
+                                      key={timeStr}
+                                      type="button"
+                                      onClick={() => setManualTime(timeStr)}
+                                      className={`px-2 py-1 text-[9px] font-bold rounded-lg border transition-all ${
+                                          isSelected 
+                                              ? "bg-cyan-500 text-black border-cyan-400 shadow-[0_0_8px_rgba(0,255,245,0.3)] scale-95" 
+                                              : "bg-white/5 text-white/70 border-white/10 hover:bg-white/10 hover:text-white"
+                                      }`}
+                                  >
+                                      {timeStr}
+                                  </button>
+                              );
+                          })}
+                      </div>
+                  ) : (
+                      <div className="text-[10px] text-red-400 font-bold bg-red-500/10 p-2.5 rounded-lg text-center uppercase tracking-wide">
+                          Nenhum horário livre compatível com a duração ({selectedService.durationMinutes} min) neste dia.
+                      </div>
+                  )}
               </div>
           </div>
       );
@@ -963,8 +1178,9 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
                </div>
                <span className="text-[9px] font-extrabold uppercase tracking-[1.5px] py-1 px-[10px] rounded-md" style={{background:statusBadge.bg,color:statusBadge.color, border: '1px solid currentColor'}}>{statusBadge.text}</span>
               </div>
-              <div className="flex items-center gap-4 mt-3">
-               <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>schedule</span>{apt.durationMinutes} min</span>
+              <div className="flex items-center gap-4 mt-3 flex-wrap">
+               <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>schedule</span>{apt.startHour}:{apt.startMinute} - {apt.endHour}:{apt.endMinute}</span>
+               <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>timer</span>{apt.durationMinutes} min</span>
                <span className="text-[10px] font-semibold text-white/30 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>payments</span>{svc?.is_variable_price ? 'A partir de ' : ''}R$ {svc?.price.toFixed(2) || '---'}</span>
                <span className="text-[10px] font-semibold text-cyan-400 flex items-center gap-1.5"><span className="material-symbols-outlined" style={{fontSize:13}}>call</span>{clients.find(c=>c.name===apt.clientName)?.phone || '(00) 0000-0000'}</span>
                
@@ -1123,7 +1339,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   {/* WIZARD MODAL */}
   {isModalOpen && createPortal(
    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-    <div className="bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] border border-white/10 animate-in zoom-in-95 text-white">
+    <div className="bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh] border border-white/10 animate-in zoom-in-95 text-white">
      <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#0f172a]">
       <div>
        <h2 className="text-xl font-bold flex items-center gap-2.5 text-white" style={{fontFamily:'Bebas Neue'}}>

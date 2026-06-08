@@ -1339,7 +1339,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   {/* WIZARD MODAL */}
   {isModalOpen && createPortal(
    <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-    <div className="bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden flex flex-col max-h-[85vh] border border-white/10 animate-in zoom-in-95 text-white">
+    <div className="bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-white/10 animate-in zoom-in-95 text-white">
      <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#0f172a]">
       <div>
        <h2 className="text-xl font-bold flex items-center gap-2.5 text-white" style={{fontFamily:'Bebas Neue'}}>

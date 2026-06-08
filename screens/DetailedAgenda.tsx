@@ -644,7 +644,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
        const filteredRulerLabels: typeof rulerLabels = [];
        rulerLabels.forEach(label => {
            const tooCloseIndex = filteredRulerLabels.findIndex(existing => 
-               Math.abs(existing.offsetPercent - label.offsetPercent) < 4.5
+               Math.abs(existing.offsetPercent - label.offsetPercent) < 7.5
            );
 
            if (tooCloseIndex !== -1) {

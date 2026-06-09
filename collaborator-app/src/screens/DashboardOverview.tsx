@@ -179,6 +179,75 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
     const [historyProId, setHistoryProId] = useState<string>('all');
     const [historyDate, setHistoryDate] = useState<string>('');
 
+    const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
+
+    const toggleExpand = (clientName: string) => {
+        setExpandedClients(prev => ({
+            ...prev,
+            [clientName]: !prev[clientName]
+        }));
+    };
+
+    const groupedCommissions = useMemo(() => {
+        if (!commissions) return [];
+        const filtered = commissions.filter(comm => {
+            if (canViewAll && historyProId !== 'all' && comm.professionalId !== historyProId) return false;
+            if (historyDate && comm.date !== historyDate) return false;
+            return true;
+        });
+
+        const groups: Record<string, any[]> = {};
+        filtered.forEach(comm => {
+            const clientName = comm.clientName || comm.client || 'Cliente';
+            if (!groups[clientName]) {
+                groups[clientName] = [];
+            }
+            groups[clientName].push(comm);
+        });
+
+        return Object.entries(groups).map(([clientName, list]) => {
+            const totalServiceValue = list.reduce((sum, c) => sum + (c.serviceValue || 0), 0);
+            const totalDiscountValue = list.reduce((sum, c) => sum + (c.discountValue || 0), 0);
+            const totalCommissionValue = list.reduce((sum, c) => sum + (c.commissionValue || 0), 0);
+            
+            const professionals = Array.from(new Set(list.map(c => c.professionalName))).join(', ');
+            const services = list.map(c => c.service).join(', ');
+
+            const dates = Array.from(new Set(list.map(c => {
+                const d = c.scheduledDate || c.date;
+                return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+            }).filter(Boolean)));
+            const dateStr = dates.length === 0 ? '' : dates.length === 1 ? dates[0] : `${dates[dates.length - 1]} - ${dates[0]}`;
+
+            const allPaid = list.every(c => c.status === 'paid');
+            const status = allPaid ? 'paid' : 'pending';
+
+            return {
+                clientName,
+                isGroup: list.length > 1,
+                servicesCount: list.length,
+                totalServiceValue,
+                totalDiscountValue,
+                totalCommissionValue,
+                professionals,
+                services,
+                dateStr,
+                status,
+                items: list,
+                representative: list[0]
+            };
+        }).sort((a, b) => {
+            const dateA = a.representative.scheduledDate || a.representative.date || '';
+            const dateB = b.representative.scheduledDate || b.representative.date || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            
+            const timeA = a.representative.startTime || '';
+            const timeB = b.representative.startTime || '';
+            return timeB.localeCompare(timeA);
+        });
+    }, [commissions, historyProId, historyDate, canViewAll]);
+
+
     const periodBounds = useMemo(() => {
         const end = new Date();
         const start = new Date();
@@ -862,46 +931,120 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {commissions && commissions.length > 0 ? commissions
-                                    .filter(comm => {
-                                        if (canViewAll && historyProId !== 'all' && comm.professionalId !== historyProId) return false;
-                                        if (historyDate && comm.date !== historyDate) return false;
-                                        return true;
-                                    })
-                                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                                    .map((comm: any, idx: number) => (
-                                    <tr key={comm.id || `hist-${idx}`} className="hover:bg-white/[0.02] transition-colors">
-                                        <td className="px-4 py-3">
-                                            {comm.scheduledDate ? (
-                                              <div className="flex flex-col gap-1 items-start">
-                                                <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
-                                                {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
-                                                  <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
-                                                )}
-                                              </div>
-                                            ) : (
-                                              <div className="flex flex-col gap-1 items-start">
-                                                <span className="text-[11px] text-white/60">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                                                {(comm.startTime || comm.endTime) && (
-                                                    <span className="text-[10px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
-                                                )}
-                                              </div>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-[11px] font-bold text-white">{comm.clientName || comm.client || 'Cliente'}</td>
-                                        {canViewAll && <td className="px-4 py-3 text-[11px] font-bold text-[#b45309]">{comm.professionalName}</td>}
-                                        <td className="px-4 py-3 text-[11px] text-white/80">{comm.service}</td>
-                                        <td className="px-4 py-3 text-[11px] text-center text-white/60">{formatBRL(comm.serviceValue)}</td>
-                                        <td className="px-4 py-3 text-[11px] text-center font-black text-[#b45309]">
-                                            {formatBRL(comm.commissionValue)} <span className="text-[9px] opacity-60 ml-1">({comm.commissionPercent}%)</span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className={`${comm.status === 'paid' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'} text-[8px] px-2 py-1 font-black uppercase tracking-wider border rounded-md shadow-sm`}>
-                                                {comm.status === 'paid' ? 'Pago' : 'Pendente'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                )) : (
+                                {groupedCommissions && groupedCommissions.length > 0 ? groupedCommissions
+                                    .map((group: any, idx: number) => {
+                                        const isExpanded = expandedClients[group.clientName];
+                                        return (
+                                            <React.Fragment key={group.clientName || `group-${idx}`}>
+                                                <tr className="hover:bg-white/[0.02] transition-colors group">
+                                                    <td className="px-4 py-3">
+                                                        {group.isGroup ? (
+                                                            <div className="flex flex-col gap-1 items-start">
+                                                                <span className="text-[11px] text-white/60 font-bold">{group.dateStr}</span>
+                                                                <span className="text-[9px] bg-[#b45309]/20 border border-[#b45309]/30 px-1.5 py-0.5 rounded text-[#b45309] font-black uppercase tracking-wider">{group.servicesCount} serviços</span>
+                                                            </div>
+                                                        ) : (
+                                                            (() => {
+                                                                const comm = group.representative;
+                                                                return comm.scheduledDate ? (
+                                                                  <div className="flex flex-col gap-1 items-start">
+                                                                    <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                                    {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                                      <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                                    )}
+                                                                  </div>
+                                                                ) : (
+                                                                  <div className="flex flex-col gap-1 items-start">
+                                                                    <span className="text-[11px] text-white/60">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                                                    {(comm.startTime || comm.endTime) && (
+                                                                        <span className="text-[10px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                                    )}
+                                                                  </div>
+                                                                );
+                                                            })()
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {group.isGroup ? (
+                                                                <button
+                                                                    onClick={() => toggleExpand(group.clientName)}
+                                                                    className="focus:outline-none text-[#b45309] hover:brightness-125 transition-all flex items-center justify-center p-1 rounded hover:bg-white/5"
+                                                                >
+                                                                    <span className={`material-symbols-outlined text-lg transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} style={{ fontVariationSettings: "'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24" }}>
+                                                                        chevron_right
+                                                                    </span>
+                                                                </button>
+                                                            ) : (
+                                                                <div className="w-7 h-7 flex items-center justify-center text-white/10">
+                                                                    <span className="material-symbols-outlined text-[8px]" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400" }}>circle</span>
+                                                                </div>
+                                                            )}
+                                                            <span className="text-[12px] font-black text-white tracking-tight group-hover:text-[#b45309] transition-colors">{group.clientName}</span>
+                                                        </div>
+                                                    </td>
+                                                    {canViewAll && (
+                                                        <td className="px-4 py-3 text-[11px] font-bold text-[#b45309] uppercase tracking-wider line-clamp-1 max-w-[150px]" title={group.professionals}>
+                                                            {group.professionals}
+                                                        </td>
+                                                    )}
+                                                    <td className="px-4 py-3 text-[11px] text-white/80 line-clamp-1 max-w-[200px]" title={group.services}>{group.services}</td>
+                                                    <td className="px-4 py-3 text-[11px] text-center text-white/60">{formatBRL(group.totalServiceValue)}</td>
+                                                    <td className="px-4 py-3 text-[11px] text-center font-black text-[#b45309]">
+                                                        {formatBRL(group.totalCommissionValue)}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className={`${group.status === 'paid' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'} text-[8px] px-2 py-1 font-black uppercase tracking-wider border rounded-md shadow-sm`}>
+                                                            {group.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+
+                                                {group.isGroup && isExpanded && group.items.map((comm: any, cIdx: number) => (
+                                                    <tr key={comm.id || `child-${idx}-${cIdx}`} className="bg-[#0f172a]/60 hover:bg-[#1e293b]/40 border-l-[3px] border-[#b45309]/60 transition-colors">
+                                                        <td className="px-4 py-3 border-b border-white/5">
+                                                            {comm.scheduledDate ? (
+                                                              <div className="flex flex-col gap-0.5 items-start opacity-70 scale-95">
+                                                                <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[8px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                                {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                                  <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[8px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                                )}
+                                                              </div>
+                                                            ) : (
+                                                              <div className="flex flex-col gap-0.5 items-start opacity-70 scale-95">
+                                                                <span className="text-[10px] font-black text-white/40 tracking-tight">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                                                {(comm.startTime || comm.endTime) && (
+                                                                    <span className="text-[9px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                                )}
+                                                              </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 pl-8 border-b border-white/5">
+                                                            <div className="flex items-center gap-1 opacity-80">
+                                                                <span className="material-symbols-outlined text-[14px] text-[#b45309]/60">subdirectory_arrow_right</span>
+                                                                <span className="text-[11px] font-bold text-white/60">{comm.clientName || comm.client || 'Cliente'}</span>
+                                                            </div>
+                                                        </td>
+                                                        {canViewAll && (
+                                                            <td className="px-4 py-3 border-b border-white/5 text-[10px] font-bold text-[#b45309]/80">
+                                                                {comm.professionalName}
+                                                            </td>
+                                                        )}
+                                                        <td className="px-4 py-3 border-b border-white/5 text-[10px] text-white/60">{comm.service}</td>
+                                                        <td className="px-4 py-3 border-b border-white/5 text-[10px] text-center text-white/50">{formatBRL(comm.serviceValue)}</td>
+                                                        <td className="px-4 py-3 border-b border-white/5 text-[10px] text-center font-bold text-[#b45309]/80">
+                                                            {formatBRL(comm.commissionValue)} <span className="text-[8px] opacity-60 ml-1">({comm.commissionPercent}%)</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            <span className={`${comm.status === 'paid' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500/80' : 'bg-amber-500/10 border-amber-500/20 text-amber-500/80'} text-[8px] px-2 py-0.5 font-bold uppercase border rounded`}>
+                                                                {comm.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    }) : (
                                     <tr><td colSpan={canViewAll ? 7 : 6} className="text-center py-10 text-[11px] font-black text-white/20 uppercase tracking-widest">Nenhum serviço encontrado</td></tr>
                                 )}
                             </tbody>

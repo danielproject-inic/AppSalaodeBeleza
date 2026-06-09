@@ -113,9 +113,10 @@ const SalonComissoesDashboard = () => {
     const stats: Record<string, any> = {};
     commissions.forEach((c: any) => {
       if (!stats[c.professionalId]) {
-        stats[c.professionalId] = { id: c.professionalId, name: c.professionalName, totalEarned: 0 };
+        stats[c.professionalId] = { id: c.professionalId, name: c.professionalName, totalEarned: 0, totalCommission: 0 };
       }
       stats[c.professionalId].totalEarned += (c.serviceValue || 0);
+      stats[c.professionalId].totalCommission += (c.commissionValue || 0);
     });
     return Object.values(stats).sort((a, b) => b.totalEarned - a.totalEarned).slice(0, 4);
   }, [commissions]);
@@ -960,7 +961,7 @@ const SalonComissoesDashboard = () => {
                     <div className="rank-name">{pro.name}</div>
                     <div className="rank-fat">{formatBRL(pro.totalEarned)} faturados</div>
                   </div>
-                  <div className="rank-comm">{formatBRL(pro.totalEarned * 0.4)}</div>
+                  <div className="rank-comm">{formatBRL(pro.totalCommission)}</div>
                 </div>
               ))}
             </div>

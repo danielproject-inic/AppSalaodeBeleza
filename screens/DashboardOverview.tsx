@@ -169,6 +169,77 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
 
     const { commissions, professionalsStats } = useCommissions(undefined, role === 'admin' || role === 'manager' ? undefined : (profile?.id || undefined));
 
+    const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
+
+    const toggleExpand = (clientName: string) => {
+        setExpandedClients(prev => ({
+            ...prev,
+            [clientName]: !prev[clientName]
+        }));
+    };
+
+    const groupedCommissions = useMemo(() => {
+        if (!commissions) return [];
+        const filtered = commissions.filter(comm => {
+            if (historyProId !== 'all' && comm.professionalId !== historyProId) return false;
+            if (historyDate && comm.date !== historyDate) return false;
+            return true;
+        });
+
+        const groups: Record<string, any[]> = {};
+        filtered.forEach(comm => {
+            const clientName = comm.clientName || comm.client || 'Cliente';
+            if (!groups[clientName]) {
+                groups[clientName] = [];
+            }
+            groups[clientName].push(comm);
+        });
+
+        return Object.entries(groups).map(([clientName, list]) => {
+            const totalServiceValue = list.reduce((sum, c) => sum + (c.serviceValue || 0), 0);
+            const totalDiscountValue = list.reduce((sum, c) => sum + (c.discountValue || 0), 0);
+            const totalCommissionValue = list.reduce((sum, c) => sum + (c.commissionValue || 0), 0);
+            
+            const professionals = Array.from(new Set(list.map(c => c.professionalName))).join(', ');
+            const services = list.map(c => c.service).join(', ');
+
+            const dates = Array.from(new Set(list.map(c => {
+                const d = c.scheduledDate || c.date;
+                return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '';
+            }).filter(Boolean)));
+            
+            // list[0] is typically the latest or earliest depending on source order. 
+            // We just format a nice range if there are multiple dates.
+            const dateStr = dates.length === 0 ? '' : dates.length === 1 ? dates[0] : `${dates[dates.length - 1]} - ${dates[0]}`;
+
+            const allPaid = list.every(c => c.status === 'paid');
+            const status = allPaid ? 'paid' : 'pending';
+
+            return {
+                clientName,
+                isGroup: list.length > 1,
+                servicesCount: list.length,
+                totalServiceValue,
+                totalDiscountValue,
+                totalCommissionValue,
+                professionals,
+                services,
+                dateStr,
+                status,
+                items: list,
+                representative: list[0]
+            };
+        }).sort((a, b) => {
+            const dateA = a.representative.scheduledDate || a.representative.date || '';
+            const dateB = b.representative.scheduledDate || b.representative.date || '';
+            if (dateA !== dateB) return dateB.localeCompare(dateA);
+            
+            const timeA = a.representative.startTime || '';
+            const timeB = b.representative.startTime || '';
+            return timeB.localeCompare(timeA);
+        });
+    }, [commissions, historyProId, historyDate]);
+
     const formatBRL = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
     const periodBounds = useMemo(() => {
@@ -852,73 +923,161 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-white/5">
-                                {commissions && commissions.length > 0 ? commissions
-                                    .filter(comm => {
-                                        if (historyProId !== 'all' && comm.professionalId !== historyProId) return false;
-                                        if (historyDate && comm.date !== historyDate) return false;
-                                        return true;
-                                    })
-                                    .map((comm: any, idx: number) => (
-                                        <tr key={comm.id || `hist-${idx}`} className="hover:bg-white/[0.02] transition-colors group">
-                                            <td className="px-4 py-4 text-center">
-                                                {comm.scheduledDate ? (
-                                                  <div className="flex flex-col gap-1 items-center">
-                                                    <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
-                                                    {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
-                                                      <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
-                                                    )}
-                                                  </div>
-                                                ) : (
-                                                  <div className="flex flex-col gap-1 items-center">
-                                                    <span className="text-[11px] font-black text-white/40 tracking-tight">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
-                                                    {(comm.startTime || comm.endTime) && (
-                                                        <span className="text-[10px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
-                                                    )}
-                                                  </div>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="text-[12px] font-black text-white tracking-tight group-hover:text-[#b45309] transition-colors">{comm.clientName || comm.client || 'Cliente'}</span>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="text-[11px] font-black text-[#b45309] uppercase tracking-wider">{comm.professionalName}</span>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                                <span className="text-[11px] font-bold text-white/70">{comm.service}</span>
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <span className={`text-[11px] font-bold ${comm.isDiscounted ? 'line-through text-white/20' : 'text-white/60'}`}>
-                                                    {formatBRL(comm.serviceValue)}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <span className="text-[11px] font-bold text-rose-500/80">
-                                                    {comm.isDiscounted ? `${formatBRL(comm.discountValue || 0)}` : '—'}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <span className="text-[12px] font-black text-white tracking-tight">
-                                                    {formatBRL(comm.serviceValue - (comm.discountValue || 0))}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <div className="flex flex-col items-center">
-                                                    <span className="text-[12px] font-black text-[#b45309] tracking-tight">
-                                                        {formatBRL(comm.commissionValue)}
-                                                    </span>
-                                                    <span className="text-[9px] font-bold text-[#b45309]/50 uppercase tracking-widest mt-0.5">({comm.commissionPercent}%)</span>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-4 text-center">
-                                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${comm.status === 'paid'
-                                                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-                                                        : 'bg-[#b45309]/10 border-[#b45309]/20 text-[#b45309]'
-                                                    }`}>
-                                                    {comm.status === 'paid' ? 'Pago' : 'Pendente'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    )) : (
+                                {groupedCommissions && groupedCommissions.length > 0 ? groupedCommissions
+                                    .map((group: any, idx: number) => {
+                                        const isExpanded = expandedClients[group.clientName];
+                                        return (
+                                            <React.Fragment key={group.clientName || `group-${idx}`}>
+                                                <tr className="hover:bg-white/[0.02] transition-colors group">
+                                                    <td className="px-4 py-4 text-center">
+                                                        {group.isGroup ? (
+                                                            <div className="flex flex-col gap-1 items-center">
+                                                                <span className="text-[11px] font-black text-white/40 tracking-tight">{group.dateStr}</span>
+                                                                <span className="text-[9px] bg-[#b45309]/20 border border-[#b45309]/30 px-1.5 py-0.5 rounded text-[#b45309] font-black uppercase tracking-wider">{group.servicesCount} serviços</span>
+                                                            </div>
+                                                        ) : (
+                                                            (() => {
+                                                                const comm = group.representative;
+                                                                return comm.scheduledDate ? (
+                                                                  <div className="flex flex-col gap-1 items-center">
+                                                                    <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                                    {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                                      <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[9px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                                    )}
+                                                                  </div>
+                                                                ) : (
+                                                                  <div className="flex flex-col gap-1 items-center">
+                                                                    <span className="text-[11px] font-black text-white/40 tracking-tight">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                                                    {(comm.startTime || comm.endTime) && (
+                                                                        <span className="text-[10px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                                    )}
+                                                                  </div>
+                                                                );
+                                                            })()
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            {group.isGroup ? (
+                                                                <button
+                                                                    onClick={() => toggleExpand(group.clientName)}
+                                                                    className="focus:outline-none text-[#b45309] hover:brightness-125 transition-all flex items-center justify-center p-1 rounded hover:bg-white/5"
+                                                                >
+                                                                    <span className={`material-symbols-outlined text-lg transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} style={{ fontVariationSettings: "'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24" }}>
+                                                                        chevron_right
+                                                                    </span>
+                                                                </button>
+                                                            ) : (
+                                                                <div className="w-7 h-7 flex items-center justify-center text-white/10">
+                                                                    <span className="material-symbols-outlined text-[8px]" style={{ fontVariationSettings: "'FILL' 1, 'wght' 400" }}>circle</span>
+                                                                </div>
+                                                            )}
+                                                            <span className="text-[12px] font-black text-white tracking-tight group-hover:text-[#b45309] transition-colors">{group.clientName}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span className="text-[11px] font-black text-[#b45309] uppercase tracking-wider line-clamp-1 max-w-[150px]" title={group.professionals}>{group.professionals}</span>
+                                                    </td>
+                                                    <td className="px-4 py-4">
+                                                        <span className="text-[11px] font-bold text-white/70 line-clamp-1 max-w-[200px]" title={group.services}>{group.services}</span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className="text-[11px] font-bold text-white/60">
+                                                            {formatBRL(group.totalServiceValue)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className="text-[11px] font-bold text-rose-500/80">
+                                                            {group.totalDiscountValue > 0 ? `${formatBRL(group.totalDiscountValue)}` : '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className="text-[12px] font-black text-white tracking-tight">
+                                                            {formatBRL(group.totalServiceValue - group.totalDiscountValue)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className="text-[12px] font-black text-[#b45309] tracking-tight">
+                                                            {formatBRL(group.totalCommissionValue)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[9px] font-black uppercase tracking-widest border ${group.status === 'paid'
+                                                                ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                                                                : 'bg-[#b45309]/10 border-[#b45309]/20 text-[#b45309]'
+                                                            }`}>
+                                                            {group.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+
+                                                {group.isGroup && isExpanded && group.items.map((comm: any, cIdx: number) => (
+                                                    <tr key={comm.id || `child-${idx}-${cIdx}`} className="bg-[#0f172a]/60 hover:bg-[#1e293b]/40 border-l-[3px] border-[#b45309]/60 transition-colors">
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            {comm.scheduledDate ? (
+                                                              <div className="flex flex-col gap-0.5 items-center opacity-70 scale-95">
+                                                                <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[8px] uppercase tracking-wider">Marcado:</span> <span className="text-white/80">{new Date(comm.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')} às {comm.startTime}</span></div>
+                                                                {comm.servicoIniciadoAt && comm.servicoTerminadoAt && (
+                                                                  <div className="whitespace-nowrap"><span className="text-[#5a5a78] text-[8px] uppercase tracking-wider">Realizado:</span> <span className="text-emerald-400/80">{new Date(comm.servicoIniciadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(comm.servicoTerminadoAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span></div>
+                                                                )}
+                                                              </div>
+                                                            ) : (
+                                                              <div className="flex flex-col gap-0.5 items-center opacity-70 scale-95">
+                                                                <span className="text-[10px] font-black text-white/40 tracking-tight">{new Date(comm.date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
+                                                                {(comm.startTime || comm.endTime) && (
+                                                                    <span className="text-[9px] text-white/30">{comm.startTime || '--:--'} - {comm.endTime || '--:--'}</span>
+                                                                )}
+                                                              </div>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-4 py-3 pl-8 border-b border-white/5">
+                                                            <div className="flex items-center gap-1 opacity-80">
+                                                                <span className="material-symbols-outlined text-[14px] text-[#b45309]/60">subdirectory_arrow_right</span>
+                                                                <span className="text-[11px] font-bold text-white/60">{comm.clientName || comm.client || 'Cliente'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 border-b border-white/5">
+                                                            <span className="text-[10px] font-bold text-[#b45309]/80 uppercase tracking-wider">{comm.professionalName}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 border-b border-white/5">
+                                                            <span className="text-[10px] font-medium text-white/50">{comm.service}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            <span className={`text-[10px] font-medium ${comm.isDiscounted ? 'line-through text-white/20' : 'text-white/40'}`}>
+                                                                {formatBRL(comm.serviceValue)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            <span className="text-[10px] font-medium text-rose-500/60">
+                                                                {comm.isDiscounted ? `${formatBRL(comm.discountValue || 0)}` : '—'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            <span className="text-[11px] font-bold text-white/60">
+                                                                {formatBRL(comm.serviceValue - (comm.discountValue || 0))}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            <div className="flex flex-col items-center scale-95">
+                                                                <span className="text-[11px] font-bold text-[#b45309]/80">
+                                                                    {formatBRL(comm.commissionValue)}
+                                                                </span>
+                                                                <span className="text-[8px] text-[#b45309]/40 uppercase tracking-widest mt-0.5">({comm.commissionPercent}%)</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center border-b border-white/5">
+                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[8px] font-bold uppercase tracking-widest border ${comm.status === 'paid'
+                                                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500/80'
+                                                                    : 'bg-[#b45309]/10 border-[#b45309]/20 text-[#b45309]/80'
+                                                                }`}>
+                                                                {comm.status === 'paid' ? 'Pago' : 'Pendente'}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </React.Fragment>
+                                        );
+                                    }) : (
                                     <tr>
                                         <td colSpan={9} className="px-4 py-20 text-center">
                                             <div className="flex flex-col items-center gap-3">

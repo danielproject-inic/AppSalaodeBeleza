@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
-  Search, Users, Layers, Sparkles, Scissors, Edit3, Trash2, 
-  Plus, X, Check, Clock 
+  Search as SearchIcon, Users as UsersIcon, Layers as LayersIcon, 
+  Sparkles as SparklesIcon, Scissors as ScissorsIcon, Edit3 as Edit3Icon, 
+  Trash2 as Trash2Icon, Plus as PlusIcon, X as XIcon, Check as CheckIcon, 
+  Clock as ClockIcon 
 } from 'lucide-react';
 import VanillaTilt from 'vanilla-tilt';
 import { useServices, ServiceWithPros } from '../hooks/useServices';
@@ -10,9 +12,21 @@ import { useCurrentUserRef, ModuleKey } from '../hooks/useCurrentUserRef';
 import { Database } from '../lib/database.types';
 import { supabase } from '../lib/supabase';
 
+const Search = SearchIcon as any;
+const Users = UsersIcon as any;
+const Layers = LayersIcon as any;
+const Sparkles = SparklesIcon as any;
+const Scissors = ScissorsIcon as any;
+const Edit3 = Edit3Icon as any;
+const Trash2 = Trash2Icon as any;
+const Plus = PlusIcon as any;
+const X = XIcon as any;
+const Check = CheckIcon as any;
+const Clock = ClockIcon as any;
+
 type Service = ServiceWithPros;
 
-const ServicesCatalog: React.FC = () => {
+const ServicesCatalog = () => {
     const { services, loading, error, addService, updateService, deleteService, refresh } = useServices();
     const { professionals, loading: proLoading } = useProfessionals();
     const { role, hasAccess } = useCurrentUserRef();
@@ -50,13 +64,13 @@ const ServicesCatalog: React.FC = () => {
 
     // Categories list (dynamic)
     const defaultCategories = ['Cabelo', 'Estética', 'Spa', 'Mão', 'Pés'];
-    const categories = useMemo(() => {
-        const cats = new Set([
+    const categories = useMemo<string[]>(() => {
+        const cats = new Set<string>([
             ...defaultCategories,
-            ...services.map(s => s.category).filter(Boolean),
+            ...services.map(s => s.category).filter((c): c is string => !!c),
             ...localNewCategories
         ]);
-        return Array.from(cats).filter(Boolean);
+        return Array.from(cats).filter((c): c is string => !!c);
     }, [services, localNewCategories]);
 
     const handleAddCategory = () => {

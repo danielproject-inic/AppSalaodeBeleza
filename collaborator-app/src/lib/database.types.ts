@@ -672,45 +672,48 @@ export type Database = {
           },
         ]
       }
-      services: {
-        Row: {
-          category: string | null
-          commission_percentage: number | null
-          created_at: string | null
-          description: string | null
-          duration_minutes: number | null
-          id: string
-          image_url: string | null
-          price: number | null
-          title: string
-          updated_at: string | null
-        }
-        Insert: {
-          category?: string | null
-          commission_percentage?: number | null
-          created_at?: string | null
-          description?: string | null
-          duration_minutes?: number | null
-          id?: string
-          image_url?: string | null
-          price?: number | null
-          title: string
-          updated_at?: string | null
-        }
-        Update: {
-          category?: string | null
-          commission_percentage?: number | null
-          created_at?: string | null
-          description?: string | null
-          duration_minutes?: number | null
-          id?: string
-          image_url?: string | null
-          price?: number | null
-          title?: string
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
+       services: {
+         Row: {
+           category: string | null
+           commission_percentage: number | null
+           created_at: string | null
+           description: string | null
+           duration_minutes: number | null
+           id: string
+           image_url: string | null
+           price: number | null
+           title: string
+           updated_at: string | null
+           is_variable_price: boolean | null
+         }
+         Insert: {
+           category?: string | null
+           commission_percentage?: number | null
+           created_at?: string | null
+           description?: string | null
+           duration_minutes?: number | null
+           id?: string
+           image_url?: string | null
+           price?: number | null
+           title: string
+           updated_at?: string | null
+           is_variable_price?: boolean | null
+         }
+         Update: {
+           category?: string | null
+           commission_percentage?: number | null
+           created_at?: string | null
+           description?: string | null
+           duration_minutes?: number | null
+           id?: string
+           image_url?: string | null
+           price?: number | null
+           title?: string
+           updated_at?: string | null
+           is_variable_price?: boolean | null
+         }
+         Relationships: []
+       }
       transactions: {
         Row: {
           amount: number

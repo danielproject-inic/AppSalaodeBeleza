@@ -22,14 +22,14 @@ const ServicesCatalog: React.FC = () => {
     
     // Category Manager states
     const [showCategoryManager, setShowCategoryManager] = useState(false);
-    const [localNewCategories, setLocalNewCategories] = useState<string[]>([]);
+    const [localNewCategories, setLocalNewCategories] = useState<string[]>(['Cabelo', 'Estética', 'Spa', 'Mão', 'Pés']);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [editingCategory, setEditingCategory] = useState<string | null>(null);
     const [editCategoryName, setEditCategoryName] = useState('');
 
     // Form states
     const [svcName, setSvcName] = useState('');
-    const [svcCat, setSvcCat] = useState('Cabelo');
+    const [svcCat, setSvcCat] = useState('');
     const [svcDesc, setSvcDesc] = useState('');
     const [svcTime, setSvcTime] = useState('');
     const [svcPrice, setSvcPrice] = useState('');
@@ -45,11 +45,9 @@ const ServicesCatalog: React.FC = () => {
     const [filterCollab, setFilterCollab] = useState('');
     const [filterCategory, setFilterCategory] = useState('');
 
-    // Categories list (dynamic)
-    const defaultCategories = ['Cabelo', 'Estética', 'Spa', 'Mão', 'Pés'];
+    // Categories list (dynamic - from existing services + manually added)
     const categories = useMemo(() => {
         const cats = new Set([
-            ...defaultCategories,
             ...services.map(s => s.category).filter(Boolean),
             ...localNewCategories
         ]);
@@ -106,7 +104,8 @@ const ServicesCatalog: React.FC = () => {
             setLocalNewCategories(prev => prev.filter(c => c !== catName));
 
             if (svcCat === catName) {
-                setSvcCat(categories[0] || 'Cabelo');
+                const remaining = categories.filter(c => c !== catName);
+                setSvcCat(remaining[0] || '');
             }
 
             if (refresh) {
@@ -139,7 +138,7 @@ const ServicesCatalog: React.FC = () => {
 
     const handleOpenAdd = () => {
         setSvcName('');
-        setSvcCat('Cabelo');
+        setSvcCat('');
         setSvcDesc('');
         setSvcTime('');
         setSvcPrice('');
@@ -325,13 +324,7 @@ const ServicesCatalog: React.FC = () => {
                                </div>
 
                                {/* HEADER */}
-                               <div className="mb-12 flex justify-between items-center relative z-10 w-full">
-                                    <div 
-                                        className="size-14 rounded-full flex items-center justify-center text-black shadow-[0_0_30px_rgba(245,158,11,0.2)] transition-all duration-500"
-                                        style={{ backgroundColor: serviceColor, boxShadow: `0 0 30px ${serviceColor}33` }}
-                                    >
-                                         <Scissors size={28} />
-                                    </div>
+                               <div className="mb-12 flex justify-end items-center relative z-10 w-full">
                                     <div className="text-right">
                                          <span className="stat-badge text-slate-600 block mb-1 uppercase tracking-widest text-[7px]">COMISSÃO</span>
                                          <span className="text-xl font-black text-white text-glow" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
@@ -344,7 +337,7 @@ const ServicesCatalog: React.FC = () => {
                                <div className="flex flex-col items-center justify-center space-y-3 mb-12 w-full relative z-10">
                                     <div className="flex flex-col items-center w-full px-4">
                                         <h3 
-                                             className="text-[20px] font-black text-white italic tracking-tighter uppercase leading-[1.1] transition-colors text-center line-clamp-2 h-[44px] flex items-center justify-center w-full" 
+                                             className="text-[16px] font-black text-white italic tracking-tighter leading-[1.2] transition-colors text-center line-clamp-3 h-[60px] flex items-center justify-center w-full" 
                                              style={{ fontFamily: "'Syne', sans-serif" }}
                                         >
                                              {s.title}
@@ -439,7 +432,7 @@ const ServicesCatalog: React.FC = () => {
                                             placeholder="NOME DO SERVIÇO" 
                                             value={svcName}
                                             onChange={(e) => setSvcName(e.target.value)}
-                                            className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black text-lg uppercase outline-none focus:border-amber-500 transition-all placeholder:text-white/45 text-center"
+                                            className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black text-lg outline-none focus:border-amber-500 transition-all placeholder:text-white/45 text-center"
                                        />
                                   </div>
                                   <div className="space-y-2 flex flex-col items-center relative">
@@ -457,6 +450,7 @@ const ServicesCatalog: React.FC = () => {
                                             onChange={(e) => setSvcCat(e.target.value)}
                                             className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black uppercase text-md outline-none focus:border-amber-500 transition-all appearance-none cursor-pointer text-center"
                                        >
+                                            {svcCat === '' && <option value="" className="bg-[#0f172a]" disabled>SELECIONE...</option>}
                                             {categories.map(cat => (
                                                 <option key={cat} value={cat} className="bg-[#0f172a]">{cat.toUpperCase()}</option>
                                             ))}

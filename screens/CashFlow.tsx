@@ -9,6 +9,7 @@ import { Database } from '../lib/database.types';
 import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
 import { supabase } from '../lib/supabase';
 import { useAdvanceRequests } from '../hooks/useAdvanceRequests';
+import { useCashSessions } from '../hooks/useCashSessions';
 
 // --- Interfaces ---
 interface Transaction {
@@ -113,7 +114,14 @@ const CashFlow: React.FC = () => {
     const { requests: advanceRequests, updateRequestStatus } = useAdvanceRequests();
 
     // --- UI State ---
-    const [isCaixaOpen, setIsCaixaOpen] = useState(() => safeGetItem('cashflow_isOpen', 'false') === 'true');
+    const { activeSession, sessionsHistory, openSession, closeSession, loading: sessionsLoading } = useCashSessions();
+    const isCaixaOpen = activeSession !== null;
+    const operador = activeSession ? (activeSession.opened_by_profile as any)?.full_name || 'Operador' : '';
+    const valorInicial = activeSession ? activeSession.opening_balance.toString() : '0';
+
+    const [valorInicialInput, setValorInicialInput] = useState('0');
+    const [actualClosingBalanceInput, setActualClosingBalanceInput] = useState('');
+
     const [modalMode, setModalMode] = useState<'none' | 'open' | 'close' | 'payment' | 'transaction' | 'bill' | 'vale' | 'add_service' | 'resolve_pending'>('none');
 
     const { profile, role, professionalId } = useCurrentUserRef();
@@ -123,21 +131,6 @@ const CashFlow: React.FC = () => {
     const [pinStatus, setPinStatus] = useState<'neutral' | 'success' | 'error'>('neutral');
     const [isCreatingPin, setIsCreatingPin] = useState(false);
     const [success, setSuccess] = useState<{ title: string, message: string } | null>(null);
-
-    // Data - Persisted Initial State
-    const [operador, setOperador] = useState(() => safeGetItem('cashflow_operador', ''));
-    const [valorInicial, setValorInicial] = useState(() => safeGetItem('cashflow_valorInicial', '0'));
-
-    // Persistence Effect
-    useEffect(() => {
-        try {
-            localStorage.setItem('cashflow_isOpen', String(isCaixaOpen));
-            localStorage.setItem('cashflow_operador', operador);
-            localStorage.setItem('cashflow_valorInicial', valorInicial);
-        } catch (e) {
-            console.warn('LocalStorage set failed', e);
-        }
-    }, [isCaixaOpen, operador, valorInicial]);
 
     const [closureObservations, setClosureObservations] = useState('');
     const [cartItems, setCartItems] = useState<ServiceItem[]>([]);
@@ -155,7 +148,7 @@ const CashFlow: React.FC = () => {
     const [serviceSearch, setServiceSearch] = useState('');
 
     const [quickReason, setQuickReason] = useState('');
-    const [activeTab, setActiveTab] = useState<'agendados' | 'recebimentos' | 'saidas' | 'contas' | 'pendentes'>('agendados');
+    const [activeTab, setActiveTab] = useState<'agendados' | 'recebimentos' | 'saidas' | 'contas' | 'pendentes' | 'historico'>('agendados');
     const [showPinEntry, setShowPinEntry] = useState(false);
 
     // Payment Finalization State
@@ -284,9 +277,15 @@ const CashFlow: React.FC = () => {
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const getCurrentTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
+    // Session specific transactions for balance calculations
+    const sessionTransactions = useMemo(() => {
+        if (!activeSession) return [];
+        return transactions.filter(t => t.cash_session_id === activeSession.id);
+    }, [transactions, activeSession]);
+
     // Computed Totals
-    const totalEntradas = transactions.filter(t => t.type === 'entrada' && t.status === 'pago').reduce((acc, t) => acc + t.amount, 0);
-    const totalSaidas = transactions.filter(t => ['saida', 'conta', 'vale'].includes(t.type) && t.status === 'pago').reduce((acc, t) => acc + t.amount, 0);
+    const totalEntradas = sessionTransactions.filter(t => t.type === 'entrada' && t.status === 'pago').reduce((acc, t) => acc + t.amount, 0);
+    const totalSaidas = sessionTransactions.filter(t => ['saida', 'conta', 'vale'].includes(t.type) && t.status === 'pago').reduce((acc, t) => acc + t.amount, 0);
     const saldoAtual = parseCurrency(valorInicial) + totalEntradas - totalSaidas;
 
     // --- Actions ---
@@ -451,7 +450,8 @@ const CashFlow: React.FC = () => {
             professional_id: primaryPro?.id || null,
             discount: discount,
             items_json: finalCartItems,
-            observation: finalObs
+            observation: finalObs,
+            cash_session_id: activeSession?.id || null
         };
 
         await addTransaction(newTrans);
@@ -534,7 +534,8 @@ const CashFlow: React.FC = () => {
             .update({
                 status: 'pago',
                 payment_method: resolvePaymentMethod,
-                created_at: new Date().toISOString()
+                created_at: new Date().toISOString(),
+                cash_session_id: activeSession?.id || null
             })
             .eq('id', selectedPendingTransaction.id);
 
@@ -583,8 +584,7 @@ const CashFlow: React.FC = () => {
                 if (value === profile?.cash_pin) {
                     setPinStatus('success');
                     setTimeout(() => {
-                        setOperador(profile?.full_name || '');
-                        setValorInicial('0');
+                        setValorInicialInput('0');
                         setModalMode('open');
                         setPinInput('');
                         setPinStatus('neutral');
@@ -784,6 +784,7 @@ const CashFlow: React.FC = () => {
                             { id: 'saidas', label: 'SAÍDAS', icon: 'arrow_upward' },
                             { id: 'contas', label: 'CONTAS A PAGAR', icon: 'book' },
                             { id: 'pendentes', label: 'A RECEBER (FIADO)', icon: 'schedule' },
+                            ...(isAdmin ? [{ id: 'historico', label: 'HISTÓRICO', icon: 'history' }] : [])
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -953,6 +954,74 @@ const CashFlow: React.FC = () => {
                                 <span className="material-symbols-outlined text-5xl mb-3 text-cyan-400/40">volunteer_activism</span>
                                 <p className="text-sm font-bold text-white/50">Nenhum pagamento pendente no momento!</p>
                                 <p className="text-xs text-white/20 mt-1">Tudo está em dia.</p>
+                            </div>
+                        )}
+
+                        {activeTab === 'historico' && (
+                            <div className="space-y-4">
+                                {sessionsHistory.map(session => {
+                                    const openedAt = new Date(session.opened_at);
+                                    const closedAt = session.closed_at ? new Date(session.closed_at) : null;
+                                    const diff = session.difference || 0;
+                                    
+                                    return (
+                                        <div key={session.id} className="p-5 rounded-3xl bg-[#1f2937]/50 border border-white/5 hover:border-white/10 transition-all flex flex-col gap-4 text-left">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <span className="text-[10px] text-[#b45309] font-black uppercase tracking-widest block">Período</span>
+                                                    <span className="text-sm font-black text-white">
+                                                        {openedAt.toLocaleDateString('pt-BR')} {openedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                                        {closedAt ? ` - ${closedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ' (Aberto)'}
+                                                    </span>
+                                                </div>
+                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${session.status === 'open' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-400 border border-white/5'}`}>
+                                                    {session.status === 'open' ? 'Aberto' : 'Fechado'}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-4">
+                                                <div>
+                                                    <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block">Operador</span>
+                                                    <span className="text-xs font-bold text-white">
+                                                        {session.status === 'open' 
+                                                            ? (session.opened_by_profile as any)?.full_name 
+                                                            : (session.closed_by_profile as any)?.full_name || (session.opened_by_profile as any)?.full_name || 'Operador'}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block">Valor Inicial</span>
+                                                    <span className="text-xs font-mono font-bold text-white">{formatCurrency(session.opening_balance)}</span>
+                                                </div>
+                                                {session.status === 'closed' && (
+                                                    <>
+                                                        <div>
+                                                            <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block">Saldo Real</span>
+                                                            <span className="text-xs font-mono font-bold text-white">{formatCurrency(session.actual_closing_balance || 0)}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block">Diferença</span>
+                                                            <span className={`text-xs font-mono font-black ${diff > 0 ? 'text-emerald-400' : diff < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                                                                {diff > 0 ? '+' : ''}{formatCurrency(diff)}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
+                                            
+                                            {session.notes && (
+                                                <div className="p-3 bg-[#0f172a]/40 rounded-xl border border-white/5 italic text-xs text-white/40">
+                                                    "{session.notes}"
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {sessionsHistory.length === 0 && (
+                                    <div className="p-10 text-center text-white/20 bg-[#1f2937]/30 rounded-3xl border border-dashed border-white/5">
+                                        <span className="material-symbols-outlined text-5xl mb-3 text-[#b45309]/40">history</span>
+                                        <p className="text-sm font-bold text-white/50">Nenhum histórico de caixa registrado.</p>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1453,17 +1522,27 @@ const CashFlow: React.FC = () => {
                                                 <div className="flex items-center gap-3 bg-[#111827]/40 border border-white/5 rounded-2xl p-4 focus-within:border-cyan-500/30 transition-all shadow-inner">
                                                     <span className="font-mono text-cyan-400 font-black text-xl">R$</span>
                                                     <input
-                                                        type="text"
-                                                        placeholder="0,00"
-                                                        value={valorInicial}
-                                                        onChange={e => setValorInicial(e.target.value)}
-                                                        className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black"
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                        value={valorInicialInput}
+                                                        onChange={e => setValorInicialInput(e.target.value)}
+                                                        className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
                                                     />
                                                 </div>
                                             </div>
 
                                             <button
-                                                onClick={() => { setIsCaixaOpen(true); setModalMode('none') }}
+                                                onClick={async () => {
+                                                    const val = parseFloat(valorInicialInput) || 0;
+                                                    if (profile?.id) {
+                                                        await openSession(val, profile.id);
+                                                        setModalMode('none');
+                                                        setValorInicialInput('0');
+                                                    } else {
+                                                        alert('Erro: Usuário não identificado.');
+                                                    }
+                                                }}
                                                 className="w-full py-6 rounded-2xl bg-cyan-500 text-slate-900 font-black uppercase tracking-[0.2em] text-xs hover:bg-cyan-400 shadow-xl shadow-cyan-500/20 transition-all active:scale-95"
                                             >
                                                 ABRIR CAIXA
@@ -1526,7 +1605,8 @@ const CashFlow: React.FC = () => {
                                                                             amount: req.amount,
                                                                             payment_method: 'Dinheiro',
                                                                             status: 'pago',
-                                                                            professional_id: req.professional_id
+                                                                            professional_id: req.professional_id,
+                                                                            cash_session_id: activeSession?.id || null
                                                                         });
                                                                     }
                                                                 }}
@@ -1607,7 +1687,8 @@ const CashFlow: React.FC = () => {
                                                             amount: val,
                                                             payment_method: 'Dinheiro',
                                                             status: 'pago',
-                                                            professional_id: primaryPro?.id || null
+                                                            professional_id: primaryPro?.id || null,
+                                                            cash_session_id: activeSession?.id || null
                                                         });
                                                         setModalMode('none');
                                                         resetForm();
@@ -1671,7 +1752,8 @@ const CashFlow: React.FC = () => {
                                                             category: 'Conta',
                                                             amount: val,
                                                             payment_method: 'Transferência',
-                                                            status: 'pago'
+                                                            status: 'pago',
+                                                            cash_session_id: activeSession?.id || null
                                                         });
 
                                                         // Optional: If this was matching an existing bill, we could update it
@@ -1730,6 +1812,22 @@ const CashFlow: React.FC = () => {
 
                                         <div className="space-y-6">
                                             <div className="space-y-2">
+                                                <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Valor Real Físico em Caixa (Obrigatório)</label>
+                                                <div className="flex items-center gap-3 bg-[#111827]/40 border border-white/5 rounded-2xl p-4 focus-within:border-cyan-500/30 transition-all shadow-inner">
+                                                    <span className="font-mono text-cyan-400 font-black text-xl">R$</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        placeholder="0.00"
+                                                        value={actualClosingBalanceInput}
+                                                        onChange={e => setActualClosingBalanceInput(e.target.value)}
+                                                        className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
+                                                        required
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-2">
                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Notas de Encerramento (Obrigatório)</label>
                                                 <textarea
                                                     value={closureObservations}
@@ -1754,16 +1852,21 @@ const CashFlow: React.FC = () => {
                                                     Manter Aberto
                                                 </button>
                                                 <button
-                                                    disabled={!closureObservations.trim()}
-                                                    onClick={() => {
-                                                        setIsCaixaOpen(false);
-                                                        setModalMode('none');
-                                                        setShowPinEntry(false);
-                                                        setPinInput('');
-                                                        setPinStatus('neutral');
+                                                    disabled={!closureObservations.trim() || !actualClosingBalanceInput}
+                                                    onClick={async () => {
+                                                        if (activeSession && profile?.id) {
+                                                            const actualVal = parseFloat(actualClosingBalanceInput) || 0;
+                                                            await closeSession(activeSession.id, actualVal, saldoAtual, closureObservations, profile.id);
+                                                            setModalMode('none');
+                                                            setActualClosingBalanceInput('');
+                                                            setClosureObservations('');
+                                                            setShowPinEntry(false);
+                                                            setPinInput('');
+                                                            setPinStatus('neutral');
+                                                        }
                                                     }}
                                                     className={`flex-[2] py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl 
-                                                        ${!closureObservations.trim()
+                                                        ${(!closureObservations.trim() || !actualClosingBalanceInput)
                                                             ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60'
                                                             : 'bg-rose-500 text-slate-900 hover:bg-rose-400 shadow-rose-500/20 active:scale-95'}`}
                                                 >

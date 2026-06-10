@@ -149,6 +149,69 @@ export type Database = {
         }
         Relationships: []
       }
+      cash_sessions: {
+        Row: {
+          id: string
+          opened_at: string
+          closed_at: string | null
+          opened_by: string | null
+          closed_by: string | null
+          opening_balance: number
+          expected_closing_balance: number | null
+          actual_closing_balance: number | null
+          difference: number | null
+          status: string
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          opened_at?: string
+          closed_at?: string | null
+          opened_by?: string | null
+          closed_by?: string | null
+          opening_balance?: number
+          expected_closing_balance?: number | null
+          actual_closing_balance?: number | null
+          difference?: number | null
+          status?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          opened_at?: string
+          closed_at?: string | null
+          opened_by?: string | null
+          closed_by?: string | null
+          opening_balance?: number
+          expected_closing_balance?: number | null
+          actual_closing_balance?: number | null
+          difference?: number | null
+          status?: string
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cash_sessions_opened_by_fkey"
+            columns: ["opened_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cash_sessions_closed_by_fkey"
+            columns: ["closed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       clients: {
         Row: {
           address_json: Json | null
@@ -729,6 +792,7 @@ export type Database = {
           professional_id: string | null
           status: string | null
           type: string
+          cash_session_id: string | null
         }
         Insert: {
           amount: number
@@ -744,6 +808,7 @@ export type Database = {
           professional_id?: string | null
           status?: string | null
           type: string
+          cash_session_id?: string | null
         }
         Update: {
           amount?: number
@@ -759,6 +824,7 @@ export type Database = {
           professional_id?: string | null
           status?: string | null
           type?: string
+          cash_session_id?: string | null
         }
         Relationships: [
           {
@@ -775,6 +841,13 @@ export type Database = {
             referencedRelation: "professionals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          }
         ]
       }
     }

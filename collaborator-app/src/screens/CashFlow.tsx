@@ -165,6 +165,7 @@ const CashFlow = () => {
     const [pendingDueDate, setPendingDueDate] = useState('');
     const [selectedPendingTransaction, setSelectedPendingTransaction] = useState<any>(null);
     const [resolvePaymentMethod, setResolvePaymentMethod] = useState('');
+    const [isProcessingPayment, setIsProcessingPayment] = useState(false);
     const [tempSelPro, setTempSelPro] = useState<string>('');
     const [tempSelService, setTempSelService] = useState<ServiceFlat | null>(null);
 
@@ -391,84 +392,96 @@ const CashFlow = () => {
     };
 
     const handleProcessPayment = async () => {
-        const subtotal = cartItems.reduce((acc, i) => acc + i.price, 0);
+        if (isProcessingPayment) return;
+        setIsProcessingPayment(true);
 
-        let discount = 0;
-        if (['PIX', 'Dinheiro'].includes(transMethod)) {
-            const percent = parseFloat(paymentDiscountPercent) || 0;
-            discount = (subtotal * percent) / 100;
-        }
+        try {
+            const subtotal = cartItems.reduce((acc, i) => acc + i.price, 0);
 
-        const total = Math.max(0, subtotal - discount);
-
-        if (transMethod === 'Dinheiro') {
-            const received = parseFloat(cashReceived) || 0;
-            if (received < total) {
-                alert('O valor recebido em dinheiro é menor que o total líquido.');
-                return;
+            let discount = 0;
+            if (['PIX', 'Dinheiro'].includes(transMethod)) {
+                const percent = parseFloat(paymentDiscountPercent) || 0;
+                discount = (subtotal * percent) / 100;
             }
-        }
 
-        // Get unique professionals involved
-        const involvedProsNames = Array.from(new Set(cartItems.map(i => i.professional || transProf || 'N/A')));
+            const total = Math.max(0, subtotal - discount);
 
-        // Find professional IDs if possible (simplified here to use the first one as primary)
-        const primaryPro = dbProfessionals.find(p => p.name === involvedProsNames[0]);
-        const dbClient = dbClients.find(c => c.name === selectedClient?.name);
-
-        if (transMethod === 'Pendente') {
-            if (!selectedClient || !dbClient) {
-                alert('Para pagamentos pendentes, é obrigatório selecionar um cliente cadastrado.');
-                return;
+            if (transMethod === 'Dinheiro') {
+                const received = parseFloat(cashReceived) || 0;
+                if (received < total) {
+                    alert('O valor recebido em dinheiro é menor que o total líquido.');
+                    setIsProcessingPayment(false);
+                    return;
+                }
             }
-            if (!pendingDueDate) {
-                alert('Por favor, selecione a data prometida para o pagamento.');
-                return;
+
+            // Get unique professionals involved
+            const involvedProsNames = Array.from(new Set(cartItems.map(i => i.professional || transProf || 'N/A')));
+
+            // Find professional IDs if possible (simplified here to use the first one as primary)
+            const primaryPro = dbProfessionals.find(p => p.name === involvedProsNames[0]);
+            const dbClient = dbClients.find(c => c.name === selectedClient?.name);
+
+            if (transMethod === 'Pendente') {
+                if (!selectedClient || !dbClient) {
+                    alert('Para pagamentos pendentes, é obrigatório selecionar um cliente cadastrado.');
+                    setIsProcessingPayment(false);
+                    return;
+                }
+                if (!pendingDueDate) {
+                    alert('Por favor, selecione a data prometida para o pagamento.');
+                    setIsProcessingPayment(false);
+                    return;
+                }
             }
+
+            let finalObs = paymentObservation;
+            if (transMethod === 'Dinheiro') {
+                const received = parseFloat(cashReceived) || 0;
+                const change = Math.max(0, received - total);
+                const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
+                finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
+            } else if (transMethod === 'Pendente') {
+                const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
+                finalObs = finalObs ? `${dueDateInfo} ${finalObs}` : dueDateInfo;
+            }
+
+            const finalCartItems = cartItems.map(item => ({
+                ...item,
+                servicoTerminadoAt: new Date().toISOString()
+            }));
+
+            const newTrans: any = {
+                type: 'entrada',
+                description: selectedClient ? `Pgto: ${selectedClient.name}` : transDesc || 'Venda Avulsa',
+                category: 'Serviço',
+                amount: total,
+                payment_method: transMethod,
+                status: transMethod === 'Pendente' ? 'pendente' : 'pago',
+                client_id: dbClient?.id || null,
+                professional_id: primaryPro?.id || null,
+                discount: discount,
+                items_json: finalCartItems,
+                observation: finalObs,
+                cash_session_id: activeSession?.id || null
+            };
+
+            await addTransaction(newTrans);
+
+            if (selectedClient && selectedClient.id) {
+                await updateAppointment(selectedClient.id, {
+                    status: transMethod === 'Pendente' ? 'concluido' : 'pago',
+                    servico_terminado_at: new Date().toISOString()
+                });
+            }
+
+            setModalMode('none');
+            resetForm();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setIsProcessingPayment(false);
         }
-
-        let finalObs = paymentObservation;
-        if (transMethod === 'Dinheiro') {
-            const received = parseFloat(cashReceived) || 0;
-            const change = Math.max(0, received - total);
-            const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
-            finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
-        } else if (transMethod === 'Pendente') {
-            const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
-            finalObs = finalObs ? `${dueDateInfo} ${finalObs}` : dueDateInfo;
-        }
-
-        const finalCartItems = cartItems.map(item => ({
-            ...item,
-            servicoTerminadoAt: new Date().toISOString()
-        }));
-
-        const newTrans: any = {
-            type: 'entrada',
-            description: selectedClient ? `Pgto: ${selectedClient.name}` : transDesc || 'Venda Avulsa',
-            category: 'Serviço',
-            amount: total,
-            payment_method: transMethod,
-            status: transMethod === 'Pendente' ? 'pendente' : 'pago',
-            client_id: dbClient?.id || null,
-            professional_id: primaryPro?.id || null,
-            discount: discount,
-            items_json: finalCartItems,
-            observation: finalObs,
-            cash_session_id: activeSession?.id || null
-        };
-
-        await addTransaction(newTrans);
-
-        if (selectedClient && selectedClient.id) {
-            await updateAppointment(selectedClient.id, {
-                status: transMethod === 'Pendente' ? 'concluido' : 'pago',
-                servico_terminado_at: new Date().toISOString()
-            });
-        }
-
-        setModalMode('none');
-        resetForm();
     };
 
     const handleMethodSelect = (method: string) => {
@@ -1405,16 +1418,17 @@ const CashFlow = () => {
                                                         </button>
                                                         <button
                                                             disabled={
+                                                                isProcessingPayment ||
                                                                 (transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) ||
                                                                 (transMethod === 'Pendente' && !pendingDueDate)
                                                             }
                                                             onClick={handleProcessPayment}
                                                             className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
-                                                                ${((transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) || (transMethod === 'Pendente' && !pendingDueDate))
+                                                                ${(isProcessingPayment || (transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) || (transMethod === 'Pendente' && !pendingDueDate))
                                                                     ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
                                                                     : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
                                                         >
-                                                            Finalizar e Emitir
+                                                            {isProcessingPayment ? 'Processando...' : 'Finalizar e Emitir'}
                                                         </button>
                                                     </div>
                                                 </div>

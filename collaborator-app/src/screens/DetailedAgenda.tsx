@@ -238,18 +238,30 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   }
 
   // 2. Check Salon Business Hours
-  const dateParts = wizardDate ? wizardDate.split('-').map(Number) : [2026, 1, 1];
-  const selDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
-  const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-  const dayKey = dayNames[selDate.getDay()];
-  
-  const businessHours = salonConfig?.business_hours 
-   ? (typeof salonConfig.business_hours === 'string' ? JSON.parse(salonConfig.business_hours) : salonConfig.business_hours)
-   : null;
+  const getBusinessHoursForDate = (dateStr: string) => {
+   if (!dateStr) return { start: '05:00', end: '20:00', isOpen: true };
+   const dateParts = dateStr.split('-').map(Number);
+   const selDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
+   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+   const dayKey = dayNames[selDate.getDay()];
+   
+   const businessHours = salonConfig?.business_hours 
+    ? (typeof salonConfig.business_hours === 'string' ? JSON.parse(salonConfig.business_hours) : salonConfig.business_hours)
+    : null;
 
-  if (businessHours && businessHours[dayKey]) {
-   const dayCfg = businessHours[dayKey];
-   if (!dayCfg.isOpen) {
+   if (businessHours && businessHours[dayKey]) {
+    return { 
+      start: businessHours[dayKey].start || '05:00', 
+      end: businessHours[dayKey].end || '20:00', 
+      isOpen: businessHours[dayKey].isOpen 
+    };
+   }
+   return { start: '05:00', end: '20:00', isOpen: true };
+  };
+
+  const { start, end, isOpen } = getBusinessHoursForDate(wizardDate);
+
+  if (!isOpen) {
     setTimeError('O salão está fechado neste dia.');
     setSelectedTimeSlot(null);
     setEndTimePreview('');
@@ -260,16 +272,18 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
    const salonStart = sh * 60 + sm;
    const salonEnd = eh * 60 + em;
 
-   if (startTimeInMinutes < salonStart || newEnd > salonEnd) {
-    setTimeError(`Fora do horário do salão (${dayCfg.start} - ${dayCfg.end}).`);
+   const lastStartLimit = (eh === 20 && em === 0) ? 19 * 60 + 59 : salonEnd;
+
+   if (startTimeInMinutes < salonStart || startTimeInMinutes > lastStartLimit) {
+    setTimeError(`Fora do horário do salão (${dayCfg.start} - ${eh === 20 && em === 0 ? '19:59' : dayCfg.end}).`);
     setSelectedTimeSlot(null);
     setEndTimePreview('');
     return;
    }
   } else {
    // Fallback if no config loaded yet or missing
-   if (startTimeInMinutes < 8 * 60 || startTimeInMinutes >= 18 * 60) {
-    setTimeError('Horário fora do expediente (08:00 - 18:00).');
+   if (startTimeInMinutes < 5 * 60 || startTimeInMinutes > 19 * 60 + 59) {
+    setTimeError('Horário fora do expediente para agendamentos (05:00 - 19:59).');
     setSelectedTimeSlot(null);
     setEndTimePreview('');
     return;
@@ -500,7 +514,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
  };
 
  const getBusinessHoursForDate = (dateStr: string) => {
-  if (!dateStr) return { start: '08:00', end: '18:00', isOpen: true };
+  if (!dateStr) return { start: '05:00', end: '20:00', isOpen: true };
   const dateParts = dateStr.split('-').map(Number);
   const selDate = new Date(dateParts[0], dateParts[1] - 1, dateParts[2]);
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
@@ -512,12 +526,12 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
 
   if (businessHours && businessHours[dayKey]) {
    return { 
-     start: businessHours[dayKey].start || '08:00', 
-     end: businessHours[dayKey].end || '18:00', 
+     start: businessHours[dayKey].start || '05:00', 
+     end: businessHours[dayKey].end || '20:00', 
      isOpen: businessHours[dayKey].isOpen 
    };
   }
-  return { start: '08:00', end: '18:00', isOpen: true };
+  return { start: '05:00', end: '20:00', isOpen: true };
  };
 
   const renderTimeline = () => {
@@ -721,10 +735,9 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
 
       const suggestions: string[] = [];
       const isToday = wizardDate === todayStr;
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-      for (let m = startMinutes; m <= endMinutes - selectedService.durationMinutes; m += 15) {
+      const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
+      const lastStart = (endH === 20 && endM === 0) ? 19 * 60 + 59 : endMinutes;
+      for (let m = startMinutes; m <= lastStart; m += 15) {
           if (isToday && m <= currentMinutes) continue;
 
           const endM = m + selectedService.durationMinutes;
@@ -934,10 +947,10 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
       return timeA - timeB;
     });
 
-  const timeSlots = Array.from({ length: 17 }, (_, i) => {
-   const h = 7 + i;
-   return h.toString().padStart(2, '0') + ':00';
-  });
+   const timeSlots = Array.from({ length: 19 }, (_, i) => {
+    const h = 5 + i;
+    return h.toString().padStart(2, '0') + ':00';
+   });
 
  const getColorForAppt = (apt: Appointment) => {
   const name = apt?.professionalName || 'P';
@@ -1121,7 +1134,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
       {/* Current time indicator */}
       {currentDate === dateString && (
         <div className="absolute w-full h-[2px] now-line z-20 pointer-events-none transition-all"
-         style={{top: `${Math.max(0, ((time.getHours() - 7) * 72) + (time.getMinutes() / 60 * 72) + 24)}px`}}>
+         style={{top: `${Math.max(0, ((time.getHours() - 5) * 72) + (time.getMinutes() / 60 * 72) + 24)}px`}}>
          <span className="absolute left-2 -top-[18px] text-[9px] font-black now-label py-0.5 px-1.5 rounded-md shadow-lg border border-pink-500/30">AGORA</span>
          <span className="absolute left-0 -top-[3px] w-[8px] h-[8px] rounded-full bg-pink-500 shadow-[0_0_8px_#ff1493] animate-pulse"/>
         </div>

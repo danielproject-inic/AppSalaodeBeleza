@@ -176,6 +176,12 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
     const [isInsightsOpen, setIsInsightsOpen] = useState(false);
     const [insightsTab, setInsightsTab] = useState<'vip'|'idle'|'cancel'>('vip');
     
+    // Report Dialog States
+    const [isClientsReportOpen, setIsClientsReportOpen] = useState(false);
+    const [clientsTab, setClientsTab] = useState<'active' | 'new'>('active');
+    const [isAgendasReportOpen, setIsAgendasReportOpen] = useState(false);
+    const [agendasTab, setAgendasTab] = useState<'active' | 'cancelled'>('active');
+
     const [historyProId, setHistoryProId] = useState<string>('all');
     const [historyDate, setHistoryDate] = useState<string>('');
 
@@ -296,7 +302,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             .filter(t => t.type === 'entrada' && t.status !== 'cancelado')
             .reduce((acc, t) => acc + (t.amount || 0), 0);
             
-        const atendimentos = filteredAppointments.filter(a => a.status !== 'cancelado').length;
+        const atendimentos = filteredAppointments.filter(a => a.status !== 'cancelled').length;
         
         const clientIds = new Set([
             ...filteredTransactions.map(t => t.client_id),
@@ -307,8 +313,13 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             .filter(t => t.type === 'entrada' && t.category?.toLowerCase().includes('produto'))
             .reduce((acc, t) => acc + (t.amount || 0), 0);
             
-        return { receita, atendimentos, clientes: clientIds.size, produtos };
-    }, [filteredTransactions, filteredAppointments]);
+        const novosClientes = dbClients.filter(c => {
+            const date = c.created_at || '';
+            return date >= periodBounds.start && date <= periodBounds.end;
+        }).length;
+        
+        return { receita, atendimentos, clientes: clientIds.size, produtos, novosClientes };
+    }, [filteredTransactions, filteredAppointments, dbClients, periodBounds]);
 
     const chartData = useMemo(() => {
         let values: number[] = [];
@@ -380,7 +391,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
     const topServices = useMemo(() => {
         const counts: Record<string, number> = {};
         filteredAppointments.forEach(a => {
-            if (a.service_id && a.status !== 'cancelado') counts[a.service_id] = (counts[a.service_id] || 0) + 1;
+            if (a.service_id && a.status !== 'cancelled') counts[a.service_id] = (counts[a.service_id] || 0) + 1;
         });
         const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]).slice(0, 5);
         const maxCount = Math.max(...sorted.map(s => s[1]), 1);
@@ -434,10 +445,10 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             const svc = dbServices.find(s => s.id === a.service_id);
             
             let color = '#f59e0b';
-            if (a.status === 'agendado' || a.status === 'confirmado') color = '#22c55e'; // emerald is actually #10b981
-            if (a.status === 'cancelado') color = '#ef4444';
-            if (a.status === 'em_andamento') color = '#3b82f6';
-            if (a.status === 'concluído') color = '#8b5cf6';
+            if (a.status === 'pending' || a.status === 'confirmado' || a.status === 'confirmed') color = '#22c55e'; // emerald is actually #10b981
+            if (a.status === 'cancelled') color = '#ef4444';
+            if (a.status === 'em_atendimento') color = '#3b82f6';
+            if (a.status === 'pago') color = '#8b5cf6';
             
             return {
                 time,
@@ -492,11 +503,11 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
         });
 
         // 2. Ocupação Hoje
-        const todayApptsList = dbAppointments.filter(a => a.start_time.startsWith(todayStr) && a.status !== 'cancelado');
+        const todayApptsList = dbAppointments.filter(a => a.start_time.startsWith(todayStr) && a.status !== 'cancelled');
         const hasIdleTimes = todayApptsList.length < 5; // Métrica de exemplo: menos de 5 clientes no dia é ocioso
 
         // 3. Tendência de Cancelamentos
-        const recentCancellationsList = dbAppointments.filter(a => a.status === 'cancelado' && new Date(a.start_time) >= sevenDaysAgo).map(appt => {
+        const recentCancellationsList = dbAppointments.filter(a => a.status === 'cancelled' && new Date(a.start_time) >= sevenDaysAgo).map(appt => {
             const client = dbClients.find(c => c.id === appt.client_id);
             const svc = dbServices.find(s => s.id === appt.service_id);
             return {
@@ -508,7 +519,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
         });
         
         const last7Cancellations = recentCancellationsList.length;
-        const prev7Cancellations = dbAppointments.filter(a => a.status === 'cancelado' && new Date(a.start_time) >= fourteenDaysAgo && new Date(a.start_time) < sevenDaysAgo).length;
+        const prev7Cancellations = dbAppointments.filter(a => a.status === 'cancelled' && new Date(a.start_time) >= fourteenDaysAgo && new Date(a.start_time) < sevenDaysAgo).length;
         const cancellationsSpiking = last7Cancellations > prev7Cancellations && last7Cancellations > 0;
 
         return {
@@ -520,6 +531,88 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             recentCancellationsList
         };
     }, [dbClients, dbAppointments]);
+
+    const periodClients = useMemo(() => {
+        const activeClientIds = new Set([
+            ...filteredTransactions.map(t => t.client_id),
+            ...filteredAppointments.map(a => a.client_id)
+        ].filter(Boolean));
+
+        return Array.from(activeClientIds).map(id => {
+            const client = dbClients.find(c => c.id === id);
+            const duplicateName = client?.name 
+                ? dbClients.filter(c => c.name?.trim().toLowerCase() === client.name?.trim().toLowerCase()).length > 1
+                : false;
+
+            const appts = filteredAppointments.filter(a => a.client_id === id);
+            const txs = filteredTransactions.filter(t => t.client_id === id);
+            const totalSpent = txs
+                .filter(t => t.type === 'entrada' && t.status !== 'cancelado')
+                .reduce((sum, t) => sum + (t.amount || 0), 0);
+
+            return {
+                id,
+                name: client?.name || 'Cliente Sem Nome',
+                phone: client?.phone,
+                avatar_url: client?.avatar_url,
+                is_vip: client?.is_vip,
+                isDuplicate: duplicateName,
+                appointmentsCount: appts.length,
+                activeAppointmentsCount: appts.filter(a => a.status !== 'cancelled').length,
+                transactionsCount: txs.length,
+                totalSpent,
+                created_at: client?.created_at
+            };
+        }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [filteredTransactions, filteredAppointments, dbClients]);
+
+    const periodNewClients = useMemo(() => {
+        return dbClients.filter(c => {
+            const date = c.created_at || '';
+            return date >= periodBounds.start && date <= periodBounds.end;
+        }).map(client => {
+            const duplicateName = client.name 
+                ? dbClients.filter(c => c.name?.trim().toLowerCase() === client.name?.trim().toLowerCase()).length > 1
+                : false;
+
+            return {
+                ...client,
+                isDuplicate: duplicateName
+            };
+        }).sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }, [dbClients, periodBounds]);
+
+    const periodActiveAppointments = useMemo(() => {
+        return filteredAppointments
+            .filter(a => a.status !== 'cancelled')
+            .map(a => {
+                const client = dbClients.find(c => c.id === a.client_id);
+                const service = dbServices.find(s => s.id === a.service_id);
+                const pro = dbProfessionals.find(p => p.id === a.professional_id);
+                return {
+                    ...a,
+                    clientName: client?.name || 'Cliente Sem Nome',
+                    serviceTitle: service?.title || 'Serviço',
+                    professionalName: pro?.name || 'Profissional'
+                };
+            }).sort((a, b) => a.start_time.localeCompare(b.start_time));
+    }, [filteredAppointments, dbClients, dbServices, dbProfessionals]);
+
+    const periodCancelledAppointments = useMemo(() => {
+        return filteredAppointments
+            .filter(a => a.status === 'cancelled')
+            .map(a => {
+                const client = dbClients.find(c => c.id === a.client_id);
+                const service = dbServices.find(s => s.id === a.service_id);
+                const pro = dbProfessionals.find(p => p.id === a.professional_id);
+                return {
+                    ...a,
+                    clientName: client?.name || 'Cliente Sem Nome',
+                    serviceTitle: service?.title || 'Serviço',
+                    professionalName: pro?.name || 'Profissional'
+                };
+            }).sort((a, b) => a.start_time.localeCompare(b.start_time));
+    }, [filteredAppointments, dbClients, dbServices, dbProfessionals]);
 
     return (
         <div className="w-full py-4 px-2 lg:px-8 selection:bg-[#b45309]/20 relative custom-scrollbar font-sans text-white">
@@ -640,15 +733,25 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                             <span className="text-[10px] font-bold text-emerald-500 mt-2">+12.5% vs ontem</span>
                         </div>
                         <div className="bg-[#1f2937] p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all flex flex-col items-center">
-                            <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3">
+                            <div 
+                                onClick={() => { setIsClientsReportOpen(true); setClientsTab('active'); }}
+                                className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-3 cursor-pointer hover:bg-blue-500/25 active:scale-95 transition-all shadow-[0_0_15px_rgba(59,130,246,0.1)] hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+                                title="Ver relatório de clientes"
+                            >
                                 <span className="material-symbols-outlined text-blue-500 text-2xl">group</span>
                             </div>
                             <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Clientes</span>
                             <span className="text-2xl font-black text-white">{kpis.clientes}</span>
-                            <span className="text-[10px] font-bold text-blue-400 mt-2">7 Novos Hoje</span>
+                            <span className="text-[10px] font-bold text-blue-400 mt-2">
+                                {kpis.novosClientes} {kpis.novosClientes === 1 ? 'Novo' : 'Novos'} {periodFilter === 'diário' ? 'Hoje' : periodFilter === 'mês' ? 'Este Mês' : periodFilter === 'ano' ? 'Este Ano' : 'No Período'}
+                            </span>
                         </div>
                         <div className="bg-[#1f2937] p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all flex flex-col items-center">
-                            <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-3">
+                            <div 
+                                onClick={() => { setIsAgendasReportOpen(true); setAgendasTab('active'); }}
+                                className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-3 cursor-pointer hover:bg-purple-500/25 active:scale-95 transition-all shadow-[0_0_15px_rgba(139,92,246,0.1)] hover:shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+                                title="Ver relatório de agendamentos"
+                            >
                                 <span className="material-symbols-outlined text-purple-500 text-2xl">event_available</span>
                             </div>
                             <span className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Agendas</span>
@@ -1153,6 +1256,224 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                         <div className="text-center py-10 opacity-50 flex flex-col items-center">
                                             <span className="material-symbols-outlined text-4xl mb-2 text-white/40">trending_down</span>
                                             <p className="text-xs font-bold text-white uppercase tracking-widest">Nenhum cancelamento recente</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
+            {/* Clientes Report Drawer */}
+            {isClientsReportOpen && (
+                <>
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] animate-in fade-in" onClick={() => setIsClientsReportOpen(false)} />
+                    <div className="fixed top-0 right-0 h-full w-[450px] bg-[#0f172a] border-l border-white/10 shadow-2xl z-[210] flex flex-col animate-in slide-in-from-right duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-[#1f2937]/50">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-blue-500">group</span>
+                                <h2 className="text-lg font-black text-white uppercase tracking-widest">Relatório de Clientes</h2>
+                            </div>
+                            <button onClick={() => setIsClientsReportOpen(false)} className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all">
+                                <span className="material-symbols-outlined text-[20px]">close</span>
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex p-4 gap-2 border-b border-white/5">
+                            <button onClick={() => setClientsTab('active')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientsTab === 'active' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>
+                                Clientes do Período ({periodClients.length})
+                            </button>
+                            <button onClick={() => setClientsTab('new')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${clientsTab === 'new' ? 'bg-[#b45309]/20 text-[#b45309] border border-[#b45309]/40' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>
+                                Novos Cadastros ({periodNewClients.length})
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                            {clientsTab === 'active' && (
+                                <div className="flex flex-col gap-3">
+                                    <p className="text-xs text-white/50 mb-2">Clientes que agendaram serviços ou realizaram checkouts no período selecionado.</p>
+                                    {periodClients.length > 0 ? periodClients.map(client => (
+                                        <div key={client.id} className="bg-[#1f2937]/50 border border-white/5 p-4 rounded-2xl flex flex-col gap-2 hover:bg-[#1f2937] transition-colors relative">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-10 rounded-full bg-cover bg-center border border-white/10 bg-white/5 flex items-center justify-center overflow-hidden" style={{ backgroundImage: client.avatar_url ? `url("${client.avatar_url}")` : undefined }}>
+                                                        {!client.avatar_url && <span className="text-xs font-black text-white/20">{client.name?.charAt(0) || 'C'}</span>}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-sm font-black text-white">{client.name}</span>
+                                                            {client.is_vip && (
+                                                                <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase rounded border border-amber-500/20">VIP</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[10px] text-white/40">{client.phone || 'Sem telefone'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-xs font-black text-white block">{formatBRL(client.totalSpent)}</span>
+                                                    <span className="text-[9px] text-white/40 block">consumido</span>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/5 justify-between">
+                                                <div className="flex items-center gap-2 text-[9px] text-white/50 uppercase font-bold tracking-wider">
+                                                    <span>📅 {client.appointmentsCount} Agend.</span>
+                                                    <span>💳 {client.transactionsCount} Trans.</span>
+                                                </div>
+                                                {client.isDuplicate && (
+                                                    <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase rounded border border-rose-500/20 flex items-center gap-0.5">
+                                                        <span className="material-symbols-outlined text-[8px]">warning</span> Cadastro Duplicado
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-10 opacity-50 flex flex-col items-center">
+                                            <span className="material-symbols-outlined text-4xl mb-2 text-white/40">group</span>
+                                            <p className="text-xs font-bold text-white uppercase tracking-widest">Nenhum cliente ativo no período</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {clientsTab === 'new' && (
+                                <div className="flex flex-col gap-3">
+                                    <p className="text-xs text-white/50 mb-2">Clientes cujo cadastro foi criado no período selecionado.</p>
+                                    {periodNewClients.length > 0 ? periodNewClients.map(client => (
+                                        <div key={client.id} className="bg-[#1f2937]/50 border border-white/5 p-4 rounded-2xl flex flex-col gap-2 hover:bg-[#1f2937] transition-colors">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-10 rounded-full bg-cover bg-center border border-white/10 bg-white/5 flex items-center justify-center overflow-hidden" style={{ backgroundImage: client.avatar_url ? `url("${client.avatar_url}")` : undefined }}>
+                                                        {!client.avatar_url && <span className="text-xs font-black text-white/20">{client.name?.charAt(0) || 'C'}</span>}
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-sm font-black text-white">{client.name}</span>
+                                                            {client.is_vip && (
+                                                                <span className="px-1.5 py-0.5 bg-amber-500/20 text-amber-500 text-[8px] font-black uppercase rounded border border-amber-500/20">VIP</span>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-[10px] text-white/40">Criado em: {client.created_at ? new Date(client.created_at).toLocaleDateString('pt-BR') : 'Sem data'}</span>
+                                                    </div>
+                                                </div>
+                                                {client.isDuplicate && (
+                                                    <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-500 text-[8px] font-black uppercase rounded border border-rose-500/20 flex items-center gap-0.5">
+                                                        <span className="material-symbols-outlined text-[8px]">warning</span> Cadastro Duplicado
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-10 opacity-50 flex flex-col items-center">
+                                            <span className="material-symbols-outlined text-4xl mb-2 text-white/40">person_add</span>
+                                            <p className="text-xs font-bold text-white uppercase tracking-widest">Nenhum cliente cadastrado hoje</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </>
+            )}
+
+            {/* Agendas Report Drawer */}
+            {isAgendasReportOpen && (
+                <>
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] animate-in fade-in" onClick={() => setIsAgendasReportOpen(false)} />
+                    <div className="fixed top-0 right-0 h-full w-[450px] bg-[#0f172a] border-l border-white/10 shadow-2xl z-[210] flex flex-col animate-in slide-in-from-right duration-300">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-6 border-b border-white/5 bg-[#1f2937]/50">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-purple-500">event_available</span>
+                                <h2 className="text-lg font-black text-white uppercase tracking-widest">Relatório de Agenda</h2>
+                            </div>
+                            <button onClick={() => setIsAgendasReportOpen(false)} className="size-8 rounded-full bg-white/5 flex items-center justify-center text-white/50 hover:bg-white/10 hover:text-white transition-all">
+                                <span className="material-symbols-outlined text-[20px]">close</span>
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="flex p-4 gap-2 border-b border-white/5">
+                            <button onClick={() => setAgendasTab('active')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${agendasTab === 'active' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>
+                                Agendas Ativas ({periodActiveAppointments.length})
+                            </button>
+                            <button onClick={() => setAgendasTab('cancelled')} className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${agendasTab === 'cancelled' ? 'bg-rose-500/20 text-rose-500 border border-rose-500/40' : 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white'}`}>
+                                Cancelados ({periodCancelledAppointments.length})
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                            {agendasTab === 'active' && (
+                                <div className="flex flex-col gap-3">
+                                    <p className="text-xs text-white/50 mb-2">Agendamentos confirmados, concluídos ou em andamento no período selecionado.</p>
+                                    {periodActiveAppointments.length > 0 ? periodActiveAppointments.map(appt => {
+                                        let statusColor = 'bg-amber-500/20 text-amber-500 border-amber-500/20';
+                                        let statusText = 'Pendente';
+                                        
+                                        if (appt.status === 'confirmed' || appt.status === 'confirmado') {
+                                            statusColor = 'bg-emerald-500/20 text-emerald-500 border-emerald-500/20';
+                                            statusText = 'Confirmado';
+                                        } else if (appt.status === 'em_atendimento') {
+                                            statusColor = 'bg-blue-500/20 text-blue-400 border-blue-500/20';
+                                            statusText = 'Em Atendimento';
+                                        } else if (appt.status === 'pago') {
+                                            statusColor = 'bg-purple-500/20 text-purple-400 border-purple-500/20';
+                                            statusText = 'Pago';
+                                        }
+
+                                        return (
+                                            <div key={appt.id} className="bg-[#1f2937]/50 border border-white/5 p-4 rounded-2xl flex flex-col gap-2 hover:bg-[#1f2937] transition-colors">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-sm font-black text-white">{appt.clientName}</span>
+                                                        <span className="text-[10px] text-[#b45309] font-black uppercase tracking-wider mt-0.5">{appt.serviceTitle}</span>
+                                                    </div>
+                                                    <span className={`px-2 py-0.5 border text-[9px] font-black uppercase rounded-md ${statusColor}`}>
+                                                        {statusText}
+                                                    </span>
+                                                </div>
+                                                <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5 text-[10px] text-white/50 font-bold uppercase tracking-wider">
+                                                    <span>🕒 {new Date(appt.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} às {new Date(appt.end_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    <span>💇 {appt.professionalName}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    }) : (
+                                        <div className="text-center py-10 opacity-50 flex flex-col items-center">
+                                            <span className="material-symbols-outlined text-4xl mb-2 text-white/40">event_available</span>
+                                            <p className="text-xs font-bold text-white uppercase tracking-widest">Nenhum agendamento ativo</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {agendasTab === 'cancelled' && (
+                                <div className="flex flex-col gap-3">
+                                    <p className="text-xs text-white/50 mb-2">Agendamentos que foram cancelados no período selecionado.</p>
+                                    {periodCancelledAppointments.length > 0 ? periodCancelledAppointments.map(appt => (
+                                        <div key={appt.id} className="bg-[#1f2937]/50 border border-white/5 p-4 rounded-2xl flex flex-col gap-2 hover:bg-[#1f2937] transition-colors">
+                                            <div className="flex justify-between items-start">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-black text-white">{appt.clientName}</span>
+                                                    <span className="text-[10px] text-rose-400 font-black uppercase tracking-wider mt-0.5">{appt.serviceTitle}</span>
+                                                </div>
+                                                <span className="px-2 py-0.5 bg-rose-500/20 text-rose-500 border border-rose-500/20 text-[9px] font-black uppercase rounded-md">
+                                                    Cancelado
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center mt-2 pt-2 border-t border-white/5 text-[10px] text-white/50 font-bold uppercase tracking-wider">
+                                                <span>🕒 {new Date(appt.start_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} às {new Date(appt.end_time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span>💇 {appt.professionalName}</span>
+                                            </div>
+                                        </div>
+                                    )) : (
+                                        <div className="text-center py-10 opacity-50 flex flex-col items-center">
+                                            <span className="material-symbols-outlined text-4xl mb-2 text-white/40">event_busy</span>
+                                            <p className="text-xs font-bold text-white uppercase tracking-widest">Nenhum cancelamento no período</p>
                                         </div>
                                     )}
                                 </div>

@@ -27,6 +27,7 @@ interface Transaction {
     items?: ServiceItem[];
     observation?: string;
     cash_session_id?: string | null;
+    date: string;
 }
 
 interface ServiceItem {
@@ -258,7 +259,8 @@ const CashFlow: React.FC = () => {
                 discount: t.discount || 0,
                 items: (t.items_json as any) || [],
                 observation: t.observation || '',
-                cash_session_id: t.cash_session_id
+                cash_session_id: t.cash_session_id,
+                date: createdAt.toLocaleDateString('pt-BR')
             };
         });
     }, [dbTransactions, dbClients, dbProfessionals, isAdmin, professionalId]);
@@ -274,6 +276,21 @@ const CashFlow: React.FC = () => {
             category: b.category || 'Geral'
         }));
     }, [dbBills]);
+
+    const recebimentosAgrupados = useMemo(() => {
+        const entries = transactions.filter(t => t.type === 'entrada');
+        const groups: { date: string; items: Transaction[] }[] = [];
+        entries.forEach(t => {
+            const dateKey = t.date || 'Sem data';
+            let group = groups.find(g => g.date === dateKey);
+            if (!group) {
+                group = { date: dateKey, items: [] };
+                groups.push(group);
+            }
+            group.items.push(t);
+        });
+        return groups;
+    }, [transactions]);
 
     // --- Helpers ---
     const parseCurrency = (val: string) => parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
@@ -849,21 +866,50 @@ const CashFlow: React.FC = () => {
                                 </div>
                             ))}
 
-                        {activeTab === 'recebimentos' && transactions.filter(t => t.type === 'entrada').map(t => (
-                            <div key={t.id} className="flex items-center justify-between p-5 rounded-[1.5rem] bg-white border border-slate-300 hover:border-emerald-300 hover:shadow-md transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-500 border border-emerald-100">
-                                        <span className="material-symbols-outlined">arrow_downward</span>
+                        {activeTab === 'recebimentos' && recebimentosAgrupados.map(group => (
+                            <div key={group.date} className="space-y-4">
+                                <div className="flex items-center gap-3 py-2">
+                                    <div className="h-[1px] flex-1 bg-white/10"></div>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5">
+                                        <span className="material-symbols-outlined text-[14px] text-[#b45309]">calendar_today</span>
+                                        <span className="text-[10px] font-black text-slate-300 tracking-[0.2em]">{group.date}</span>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800">{t.description}</h3>
-                                        <p className="text-xs text-slate-800 mt-1">{t.client || 'Avulso'} • <span className="text-cyan-500 font-bold">{t.time}</span></p>
+                                    <div className="h-[1px] flex-1 bg-white/10"></div>
+                                </div>
+                                {group.items.map(t => (
+                                    <div key={t.id} className="flex items-center justify-between p-5 rounded-[1.5rem] bg-white border border-slate-300 hover:border-emerald-300 hover:shadow-md transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-500 border border-emerald-100">
+                                                <span className="material-symbols-outlined">arrow_downward</span>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-800">{t.description}</h3>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                    <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md">{t.time}</span>
+                                                    {t.items && t.items.length > 0 ? (
+                                                        t.items.map((item, idx) => (
+                                                            <div key={idx} className="flex items-center gap-1.5 bg-emerald-50/80 border border-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
+                                                                <span>{item.title}</span>
+                                                                {item.professional && (
+                                                                    <>
+                                                                        <span className="text-emerald-300">|</span>
+                                                                        <span className="text-emerald-600 font-bold">{item.professional}</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400 italic">Serviço avulso</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-mono text-emerald-500 font-black text-xl">{formatCurrency(t.amount)}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.paymentMethod}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-mono text-emerald-500 font-black text-xl">{formatCurrency(t.amount)}</p>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.paymentMethod}</p>
-                                </div>
+                                ))}
                             </div>
                         ))}
 
@@ -1151,50 +1197,79 @@ const CashFlow: React.FC = () => {
                                             <div className="bg-[#111827]/50 p-5 rounded-2xl border border-white/5 flex flex-col justify-center col-span-2 shadow-inner gap-3">
                                                 <span className="text-[10px] text-cyan-400 uppercase font-black tracking-widest">Cliente</span>
                                                 {isWalkIn ? (
-                                                    <div className="space-y-3">
-                                                        <div className="relative">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Digite para buscar o cliente..."
-                                                                value={clientSearchQuery}
-                                                                onChange={e => setClientSearchQuery(e.target.value)}
-                                                                className="w-full bg-[#1e293b] border border-white/10 rounded-xl pl-10 pr-10 py-2 text-sm font-bold text-white placeholder:text-white/20 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
-                                                            />
-                                                            <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-lg">search</span>
-                                                            {clientSearchQuery && (
+                                                    <div className="space-y-3 relative">
+                                                        {selectedClient ? (
+                                                            <div className="flex items-center justify-between p-3 bg-[#1e293b] border border-cyan-500/30 rounded-xl">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="size-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center">
+                                                                        <span className="material-symbols-outlined text-cyan-400 text-sm">person</span>
+                                                                    </div>
+                                                                    <span className="font-bold text-white">{selectedClient.name}</span>
+                                                                </div>
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => setClientSearchQuery('')}
-                                                                    className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
+                                                                    onClick={() => setSelectedClient(null)}
+                                                                    className="w-6 h-6 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
                                                                 >
                                                                     <span className="material-symbols-outlined text-xs">close</span>
                                                                 </button>
-                                                            )}
-                                                        </div>
-                                                        <select
-                                                            value={selectedClient?.id || ''}
-                                                            onChange={e => {
-                                                                const client = allClientsFormatted.find(c => c.id === e.target.value);
-                                                                if (client) {
-                                                                    setSelectedClient({
-                                                                        id: client.id,
-                                                                        name: client.name,
-                                                                        service: 'Serviço Avulso',
-                                                                        professional: '',
-                                                                        time: getCurrentTime(),
-                                                                        endTime: getCurrentTime(),
-                                                                        amount: 0,
-                                                                        status: 'aguardando'
-                                                                    });
-                                                                } else {
-                                                                    setSelectedClient(null);
-                                                                }
-                                                            }}
-                                                            className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-4 py-2 text-lg font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all cursor-pointer shadow-none"
-                                                        >
-                                                            <option value="">Selecionar Cliente...</option>
-                                                            {filteredClients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                                                        </select>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="Digite para buscar o cliente..."
+                                                                    value={clientSearchQuery}
+                                                                    onChange={e => setClientSearchQuery(e.target.value)}
+                                                                    className="w-full bg-[#1e293b] border border-white/10 rounded-xl pl-10 pr-10 py-2 text-sm font-bold text-white placeholder:text-white/20 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
+                                                                />
+                                                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-lg">search</span>
+                                                                {clientSearchQuery && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setClientSearchQuery('')}
+                                                                        className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full bg-white/5 text-white/40 hover:bg-white/10 hover:text-white transition-all"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-xs">close</span>
+                                                                    </button>
+                                                                )}
+
+                                                                {/* Autocomplete Dropdown List */}
+                                                                {clientSearchQuery.trim() !== '' && (
+                                                                    <div className="absolute left-0 right-0 top-full mt-1.5 z-50 bg-[#1e293b] border border-white/10 rounded-xl max-h-60 overflow-y-auto shadow-2xl p-1.5 space-y-1 custom-scrollbar">
+                                                                        {filteredClients.length > 0 ? (
+                                                                            filteredClients.map(client => (
+                                                                                <button
+                                                                                    key={client.id}
+                                                                                    type="button"
+                                                                                    onClick={() => {
+                                                                                        setSelectedClient({
+                                                                                            id: client.id,
+                                                                                            name: client.name,
+                                                                                            service: 'Serviço Avulso',
+                                                                                            professional: '',
+                                                                                            time: getCurrentTime(),
+                                                                                            endTime: getCurrentTime(),
+                                                                                            amount: 0,
+                                                                                            status: 'aguardando'
+                                                                                        });
+                                                                                        setClientSearchQuery('');
+                                                                                    }}
+                                                                                    className="w-full text-left px-3.5 py-2.5 rounded-lg hover:bg-white/5 text-sm text-white font-bold transition-all flex items-center gap-2.5 group"
+                                                                                >
+                                                                                    <span className="material-symbols-outlined text-white/20 group-hover:text-cyan-400 text-sm">person</span>
+                                                                                    <span>{client.name}</span>
+                                                                                </button>
+                                                                            ))
+                                                                        ) : (
+                                                                            <div className="px-3.5 py-2.5 text-xs text-white/40 italic text-center">
+                                                                                Nenhum cliente encontrado
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xl font-black text-white tracking-tight">{selectedClient?.name || 'Cliente Avulso'}</span>

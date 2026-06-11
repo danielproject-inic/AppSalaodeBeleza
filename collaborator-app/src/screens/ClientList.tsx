@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useClients } from '../hooks/useClients';
+import { useClients, DuplicateCheckResult } from '../hooks/useClients';
 import { Database } from '../lib/database.types';
 import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
 import { useAppointments } from '../hooks/useAppointments';
@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 type Client = Database['public']['Tables']['clients']['Row'];
 
 const ClientList: React.FC = () => {
-    const { clients, loading, error: supabaseError, addClient, updateClient, deleteClient } = useClients();
+    const { clients, loading, error: supabaseError, addClient, updateClient, deleteClient, checkDuplicate } = useClients();
     const { hasAccess, role: userRole, professionalId: loggedProId } = useCurrentUserRef();
     const canViewAll = userRole === 'admin' || userRole === 'manager' || hasAccess('team_view_all');
     const { appointments: allAppointments } = useAppointments();
@@ -35,6 +35,8 @@ const ClientList: React.FC = () => {
     // Confirm/Success Modals
     const [confirmModalState, setConfirmModalState] = useState<{ isOpen: boolean, clientId: string | null }>({ isOpen: false, clientId: null });
     const [successModalState, setSuccessModalState] = useState<{ isOpen: boolean, title: string, description: string }>({ isOpen: false, title: '', description: '' });
+    const [duplicateWarning, setDuplicateWarning] = useState<DuplicateCheckResult & { forceAllowed?: boolean }>({ isDuplicate: false });
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
     // Update selected client when clients list changes or is loaded for the first time
     useEffect(() => {
@@ -256,7 +258,7 @@ const ClientList: React.FC = () => {
         }
     };
 
-    const handleSaveClient = async () => {
+    const performSaveClient = async () => {
         let finalAvatarUrl = avatarPreview;
 
         // If there's a new file to upload
@@ -320,6 +322,41 @@ const ClientList: React.FC = () => {
         }
 
         resetModal();
+    };
+
+    const handleSaveClient = async () => {
+        // Check for duplicates before saving (only for new clients)
+        if (!isEditing) {
+            const duplicateResult = checkDuplicate(newClient.nome, newClient.telefone, newClient.cpf);
+            if (duplicateResult.isDuplicate) {
+                // For name+phone or CPF match: BLOCK (hard duplicate)
+                if (duplicateResult.matchType === 'name_phone' || duplicateResult.matchType === 'cpf') {
+                    setDuplicateWarning({ ...duplicateResult, forceAllowed: false });
+                    setShowDuplicateModal(true);
+                    return;
+                }
+                // For phone-only or name-only: WARN but allow override
+                setDuplicateWarning({ ...duplicateResult, forceAllowed: true });
+                setShowDuplicateModal(true);
+                return;
+            }
+        } else if (isEditing && selectedClient) {
+            // For editing, check excluding the current client
+            const duplicateResult = checkDuplicate(newClient.nome, newClient.telefone, newClient.cpf, selectedClient.id);
+            if (duplicateResult.isDuplicate && (duplicateResult.matchType === 'name_phone' || duplicateResult.matchType === 'cpf')) {
+                setDuplicateWarning({ ...duplicateResult, forceAllowed: false });
+                setShowDuplicateModal(true);
+                return;
+            }
+        }
+
+        await performSaveClient();
+    };
+
+    const handleForceSave = async () => {
+        setShowDuplicateModal(false);
+        setDuplicateWarning({ isDuplicate: false });
+        await performSaveClient();
     };
 
     const resetModal = () => {
@@ -739,6 +776,94 @@ const ClientList: React.FC = () => {
                             >
                                 {isEditing ? 'Salvar Alterações' : 'Salvar Cliente'}
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal de Alerta de Duplicidade */}
+            {showDuplicateModal && duplicateWarning.isDuplicate && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-[#1e293b] rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 border border-amber-500/30">
+                        {/* Header */}
+                        <div className="p-6 flex items-center gap-4">
+                            <div className={`p-3 rounded-xl ${duplicateWarning.forceAllowed ? 'bg-amber-500/20' : 'bg-red-500/20'}`}>
+                                <span className={`material-symbols-outlined text-2xl ${duplicateWarning.forceAllowed ? 'text-amber-400' : 'text-red-400'}`}>
+                                    {duplicateWarning.forceAllowed ? 'warning' : 'block'}
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">
+                                    {duplicateWarning.forceAllowed ? 'Possível Duplicidade' : 'Cadastro Duplicado'}
+                                </h3>
+                                <p className="text-white/50 text-xs">
+                                    {duplicateWarning.forceAllowed ? 'Verifique antes de continuar' : 'Não é possível cadastrar'}
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Body */}
+                        <div className="px-6 pb-4 space-y-4">
+                            <div className={`p-4 rounded-xl border ${duplicateWarning.forceAllowed ? 'bg-amber-500/5 border-amber-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                                <p className="text-sm text-white/90 leading-relaxed">
+                                    {duplicateWarning.message}
+                                </p>
+                            </div>
+
+                            {duplicateWarning.existingClient && (
+                                <div className="p-4 bg-[#0f172a] rounded-xl border border-white/10">
+                                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-2">Cliente Existente</p>
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                            {duplicateWarning.existingClient.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-white">{duplicateWarning.existingClient.name}</p>
+                                            <div className="flex items-center gap-3 mt-0.5">
+                                                {duplicateWarning.existingClient.phone && (
+                                                    <span className="text-xs text-white/50 flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-[14px]">call</span>
+                                                        {duplicateWarning.existingClient.phone}
+                                                    </span>
+                                                )}
+                                                {duplicateWarning.existingClient.cpf && (
+                                                    <span className="text-xs text-white/50 flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-[14px]">fingerprint</span>
+                                                        {duplicateWarning.existingClient.cpf}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!duplicateWarning.forceAllowed && (
+                                <p className="text-xs text-red-400/80 text-center">
+                                    <span className="material-symbols-outlined text-[14px] align-middle mr-1">info</span>
+                                    {duplicateWarning.matchType === 'cpf' 
+                                        ? 'Não é permitido cadastrar dois clientes com o mesmo CPF.'
+                                        : 'Não é permitido cadastrar dois clientes com o mesmo nome e telefone.'}
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 pt-2 flex gap-3">
+                            <button
+                                onClick={() => { setShowDuplicateModal(false); setDuplicateWarning({ isDuplicate: false }); }}
+                                className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 font-bold bg-[#1e293b] hover:border-amber-500/30 transition-all"
+                            >
+                                Voltar e Corrigir
+                            </button>
+                            {duplicateWarning.forceAllowed && (
+                                <button
+                                    onClick={handleForceSave}
+                                    className="flex-1 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold transition-all shadow-lg shadow-amber-900/30"
+                                >
+                                    Cadastrar Mesmo Assim
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -98,11 +98,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
 
         const [h, m] = timeStr.split(':').map(Number);
         const startTimeInMinutes = h * 60 + m;
-        const businessStart = 8 * 60; // 08:00
+        const businessStart = 5 * 60; // 05:00
         const businessEnd = 20 * 60; // 20:00
 
         if (startTimeInMinutes < businessStart || startTimeInMinutes >= businessEnd) {
-            setTimeError('Fora do horário de funcionamento (08:00 - 20:00).');
+            setTimeError('Fora do horário de funcionamento (05:00 - 19:59).');
             setEndTimePreview('');
             return;
         }
@@ -316,7 +316,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                     <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">Agenda do Profissional</h3>
                                     <div className="relative h-24 bg-white/5 rounded-2xl border border-white/10 overflow-hidden backdrop-blur-sm">
                                         <div className="absolute inset-0 flex">
-                                            {Array.from({ length: 13 }, (_, i) => 8 + i).map(h => (
+                                            {Array.from({ length: 19 }, (_, i) => 5 + i).map(h => (
                                                 <div key={h} className="flex-1 border-r border-white/5 relative group">
                                                     <span className="absolute top-2 left-1 text-[8px] font-black text-slate-600 group-hover:text-slate-400 transition-colors">{h}h</span>
                                                 </div>
@@ -328,8 +328,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                             const end = new Date(apt.end_time);
                                             const startMin = start.getHours() * 60 + start.getMinutes();
                                             const endMin = end.getHours() * 60 + end.getMinutes();
-                                            const left = ((startMin - 480) / 720) * 100;
-                                            const width = ((endMin - startMin) / 720) * 100;
+                                            const left = ((startMin - 300) / 1080) * 100;
+                                            const width = ((endMin - startMin) / 1080) * 100;
 
                                             return (
                                                 <div
@@ -348,13 +348,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                                 animate={{ opacity: 1 }}
                                                 className="absolute top-8 bottom-4 bg-[#22d3ee]/20 border-x border-[#22d3ee] shadow-[0_0_10px_rgba(34,211,238,0.2)]"
                                                 style={{
-                                                    left: `${((parseInt(manualTime.split(':')[0]) * 60 + parseInt(manualTime.split(':')[1]) - 480) / 720) * 100}%`,
-                                                    width: `${(service.duration_minutes / 720) * 100}%`
+                                                    left: `${((parseInt(manualTime.split(':')[0]) * 60 + parseInt(manualTime.split(':')[1]) - 300) / 1080) * 100}%`,
+                                                    width: `${(service.duration_minutes / 1080) * 100}%`
                                                 }}
                                             />
                                         )}
                                     </div>
-                                    <p className="text-[9px] text-slate-500 font-bold text-center italic">A visualização mostra apenas o intervalo comercial das 08h às 20h.</p>
+                                    <p className="text-[9px] text-slate-500 font-bold text-center italic">A visualização mostra apenas o intervalo comercial das 05h às 23h.</p>
                                 </div>
                             </motion.div>
                         )}

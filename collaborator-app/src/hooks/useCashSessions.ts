@@ -17,8 +17,8 @@ export const useCashSessions = () => {
                 .from('cash_sessions')
                 .select(`
                     *,
-                    opened_by_profile:profiles!cash_sessions_opened_by_fkey(full_name),
-                    closed_by_profile:profiles!cash_sessions_closed_by_fkey(full_name)
+                    opened_by_profile:profiles!cash_sessions_opened_by_fkey(full_name, phone),
+                    closed_by_profile:profiles!cash_sessions_closed_by_fkey(full_name, phone)
                 `)
                 .eq('status', 'open')
                 .order('opened_at', { ascending: false })
@@ -37,8 +37,8 @@ export const useCashSessions = () => {
                 .from('cash_sessions')
                 .select(`
                     *,
-                    opened_by_profile:profiles!cash_sessions_opened_by_fkey(full_name),
-                    closed_by_profile:profiles!cash_sessions_closed_by_fkey(full_name)
+                    opened_by_profile:profiles!cash_sessions_opened_by_fkey(full_name, phone),
+                    closed_by_profile:profiles!cash_sessions_closed_by_fkey(full_name, phone)
                 `)
                 .order('opened_at', { ascending: false })
                 .limit(100);

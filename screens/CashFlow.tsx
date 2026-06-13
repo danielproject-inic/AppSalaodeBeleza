@@ -118,6 +118,13 @@ const CashFlow: React.FC = () => {
     // --- UI State ---
     const { activeSession, sessionsHistory, openSession, closeSession, loading: sessionsLoading } = useCashSessions();
     const isCaixaOpen = activeSession !== null;
+    const isSessionFromPreviousDay = useMemo(() => {
+        if (!activeSession) return false;
+        const openedDate = new Date(activeSession.opened_at).toLocaleDateString('en-CA'); // formato YYYY-MM-DD
+        const todayObj = new Date();
+        const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+        return openedDate < todayStr;
+    }, [activeSession]);
     const operador = activeSession ? (activeSession.opened_by_profile as any)?.full_name || 'Operador' : '';
     const valorInicial = activeSession ? activeSession.opening_balance.toString() : '0';
 
@@ -743,6 +750,91 @@ const CashFlow: React.FC = () => {
                 </div>
             )}
 
+            {/* Forced Closure Overlay for Caixas left open on previous days */}
+            {isCaixaOpen && isSessionFromPreviousDay && (
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#0f172a]/95 backdrop-blur-xl p-6">
+                    <div className="max-w-md w-full bg-[#1e293b] border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col p-8 space-y-6">
+                        <div className="text-center space-y-2">
+                            <div className="size-20 rounded-[2rem] bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4 animate-bounce">
+                                <span className="material-symbols-outlined text-4xl">priority_high</span>
+                            </div>
+                            <h2 className="text-3xl font-black text-white uppercase tracking-tight" style={{ fontFamily: 'Bebas Neue' }}>
+                                Caixa Pendente de Fechamento!
+                            </h2>
+                            <p className="text-white/40 text-xs font-bold leading-relaxed px-4 uppercase tracking-widest">
+                                Há um caixa aberto do dia {new Date(activeSession.opened_at).toLocaleDateString('pt-BR')}. Você deve fechá-lo antes de continuar.
+                            </p>
+                        </div>
+
+                        <div className="p-6 bg-[#0f172a] rounded-2xl border border-white/5 space-y-4">
+                            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                                <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Aberto em</span>
+                                <span className="text-xs font-bold text-white">
+                                    {new Date(activeSession.opened_at).toLocaleDateString('pt-BR')} {new Date(activeSession.opened_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center pb-2 border-b border-white/5">
+                                <span className="text-[10px] text-white/30 uppercase font-black tracking-widest">Aberto por</span>
+                                <span className="text-xs font-bold text-white">{(activeSession as any).opened_by_profile?.full_name || 'Operador'}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-[10px] text-cyan-400 uppercase font-black tracking-widest">Saldo Esperado</span>
+                                <span className="text-xl font-mono font-black text-cyan-400">{formatCurrency(saldoAtual)}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2 block">Valor Real Físico em Caixa (Obrigatório)</label>
+                                <div className="flex items-center gap-3 bg-[#111827]/40 border border-white/5 rounded-2xl p-4 focus-within:border-cyan-500/30 transition-all shadow-inner">
+                                    <span className="font-mono text-cyan-400 font-black text-xl">R$</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00"
+                                        value={actualClosingBalanceInput}
+                                        onChange={e => setActualClosingBalanceInput(e.target.value)}
+                                        className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2 block">Notas de Encerramento (Obrigatório)</label>
+                                <textarea
+                                    value={closureObservations}
+                                    onChange={e => setClosureObservations(e.target.value)}
+                                    placeholder="Ex: Esqueci de fechar ontem. Saldo confere..."
+                                    className="w-full bg-[#111827]/40 border border-white/5 rounded-2xl p-5 text-sm text-white/80 outline-none focus:border-cyan-500/30 transition-all min-h-[100px] resize-none"
+                                />
+                            </div>
+
+                            <button
+                                disabled={!closureObservations.trim() || !actualClosingBalanceInput}
+                                onClick={async () => {
+                                    if (activeSession && profile?.id) {
+                                        const actualVal = parseFloat(actualClosingBalanceInput) || 0;
+                                        await closeSession(activeSession.id, actualVal, saldoAtual, closureObservations, profile.id);
+                                        setActualClosingBalanceInput('');
+                                        setClosureObservations('');
+                                        setShowPinEntry(false);
+                                        setPinInput('');
+                                        setPinStatus('neutral');
+                                    }
+                                }}
+                                className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all shadow-xl 
+                                    ${(!closureObservations.trim() || !actualClosingBalanceInput)
+                                        ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60'
+                                        : 'bg-rose-500 text-slate-900 hover:bg-rose-400 shadow-rose-500/20 active:scale-95'}`}
+                            >
+                                Confirmar Fechamento de Caixa do Dia Anterior
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header Area - Dark Glass */}
             <header className="px-8 py-6 flex flex-none items-center justify-between border-b border-white/5 bg-[#111827]/50 backdrop-blur-xl relative z-10">
                 <div className="flex items-center gap-4">
@@ -1035,9 +1127,50 @@ const CashFlow: React.FC = () => {
                                                         {closedAt ? ` - ${closedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : ' (Aberto)'}
                                                     </span>
                                                 </div>
-                                                <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${session.status === 'open' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-400 border border-white/5'}`}>
-                                                    {session.status === 'open' ? 'Aberto' : 'Fechado'}
-                                                </span>
+                                                <div className="flex items-center">
+                                                    <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider ${session.status === 'open' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700 text-slate-400 border border-white/5'}`}>
+                                                        {session.status === 'open' ? 'Aberto' : 'Fechado'}
+                                                    </span>
+                                                    {(() => {
+                                                        const sessionOpenedDate = openedAt.toLocaleDateString('en-CA');
+                                                        const todayObj = new Date();
+                                                        const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
+                                                        const isHistorySessionFromPreviousDay = sessionOpenedDate < todayStr;
+                                                        
+                                                        if (session.status === 'open' && isHistorySessionFromPreviousDay) {
+                                                            return (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const operatorName = (session.opened_by_profile as any)?.full_name || 'Operador';
+                                                                        const phone = (session.opened_by_profile as any)?.phone ? (session.opened_by_profile as any).phone.replace(/\D/g, '') : '';
+                                                                        
+                                                                        const sessionDateFormatted = openedAt.toLocaleDateString('pt-BR');
+                                                                        const message = `Olá, ${operatorName}! Consta em nosso sistema que o caixa do dia ${sessionDateFormatted} ainda está em aberto. Por favor, realize o fechamento no aplicativo o quanto antes.\n\nAtenciosamente, Salon Suite Pro`;
+                                                                        
+                                                                        if (!phone) {
+                                                                            alert('Este operador não possui telefone cadastrado.');
+                                                                            return;
+                                                                        }
+                                                                        
+                                                                        let cleanPhone = phone;
+                                                                        if (!cleanPhone.startsWith('55') && cleanPhone.length <= 11) {
+                                                                            cleanPhone = '55' + cleanPhone;
+                                                                        }
+                                                                        
+                                                                        const url = `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(message)}`;
+                                                                        window.open(url, '_blank');
+                                                                    }}
+                                                                    className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-900 rounded-full text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ml-2 border-none font-sans"
+                                                                    title="Notificar Operador via WhatsApp"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[12px]">chat</span>
+                                                                    Notificar
+                                                                </button>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 border-t border-white/5 pt-4">

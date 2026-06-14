@@ -752,8 +752,8 @@ const CashFlow: React.FC = () => {
 
             {/* Forced Closure Overlay for Caixas left open on previous days */}
             {isCaixaOpen && isSessionFromPreviousDay && (
-                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#0f172a]/95 backdrop-blur-xl p-6">
-                    <div className="max-w-md w-full bg-[#1e293b] border border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col p-8 space-y-6">
+                <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#0f172a]/95 backdrop-blur-xl p-4 overflow-hidden">
+                    <div className="max-w-md w-full max-h-[90vh] overflow-y-auto bg-[#1e293b] border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col p-6 md:p-8 space-y-4 md:space-y-6 custom-scrollbar">
                         <div className="text-center space-y-2">
                             <div className="size-20 rounded-[2rem] bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4 animate-bounce">
                                 <span className="material-symbols-outlined text-4xl">priority_high</span>

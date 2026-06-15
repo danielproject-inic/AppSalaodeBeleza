@@ -58,6 +58,41 @@ const App = () => {
     };
   }, []);
 
+  // Medir largura física real do container de scroll para alinhamento perfeito do Nav Bar
+  useEffect(() => {
+    if (!session) return;
+
+    const updateScrollbarWidth = () => {
+      const scrollEl = document.getElementById('main-scroll-container');
+      if (scrollEl) {
+        const scrollbarWidth = scrollEl.offsetWidth - scrollEl.clientWidth;
+        document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
+      }
+    };
+
+    updateScrollbarWidth();
+    const timer = setTimeout(updateScrollbarWidth, 100);
+
+    const scrollEl = document.getElementById('main-scroll-container');
+    let observer: ResizeObserver | null = null;
+    if (scrollEl) {
+      observer = new ResizeObserver(() => {
+        updateScrollbarWidth();
+      });
+      observer.observe(scrollEl);
+    }
+
+    window.addEventListener('resize', updateScrollbarWidth);
+
+    return () => {
+      clearTimeout(timer);
+      if (observer && scrollEl) {
+        observer.unobserve(scrollEl);
+      }
+      window.removeEventListener('resize', updateScrollbarWidth);
+    };
+  }, [session, currentScreen]);
+
   useEffect(() => {
     // Logic to clear "ghost" sessions if the database was wiped
     if (!permissionsLoading && session && !profile) {
@@ -245,20 +280,25 @@ const App = () => {
 
       {/* 2. Optimized Floating Navbar */}
       {menuItems.length > 0 ? (
-        <div className="flex-none z-40 flex justify-center py-4 bg-transparent pointer-events-none sticky top-0">
-          <div className="pointer-events-auto relative mx-4">
-            <div className="relative rounded-full p-[1px] bg-white/5 shadow-2xl">
-              <nav className="bg-[#1f2937]/90 backdrop-blur-xl rounded-full px-4 py-2.5 flex items-center gap-1 overflow-x-auto scrollbar-hide max-w-full">
+        <div 
+          className="flex-none z-40 flex justify-center py-4 px-2 lg:px-8 bg-transparent pointer-events-none sticky top-0"
+          style={{ 
+            width: 'calc(100% - var(--scrollbar-width, 0px))',
+            marginRight: 'var(--scrollbar-width, 0px)' 
+          }}
+        >
+          <div className="pointer-events-auto relative w-full max-w-[1180px]">
+            <nav className="bg-[#1f2937]/90 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide w-full shadow-2xl">
                 {menuItems.map((item) => {
                   const isActive = currentScreen === item.id;
                   return (
                     <button
                       key={item.id}
                       onClick={() => setCurrentScreen(item.id)}
-                      className="group relative flex flex-col items-center justify-center rounded-2xl transition-all duration-400 cursor-pointer"
+                      className="group relative flex flex-col items-center justify-center rounded-xl transition-all duration-400 cursor-pointer flex-1"
                       style={{
-                        padding: '6px 14px',
-                        minWidth: '64px',
+                        padding: '8px 16px',
+                        minWidth: '76px',
                       }}
                     >
                       {/* Badge for coming soon items */}
@@ -270,18 +310,18 @@ const App = () => {
 
                       {/* Active background glow */}
                       {isActive && (
-                        <div className="absolute inset-0 rounded-2xl bg-[#2c3e50] border border-[#b87333]/20" />
+                        <div className="absolute inset-0 rounded-xl bg-[#2c3e50] border border-[#b87333]/20" />
                       )}
 
                       {/* Icon with Subtle Glow */}
-                      <div className="relative z-10 flex items-center justify-center" style={{ width: '32px', height: '32px' }}>
+                      <div className="relative z-10 flex items-center justify-center" style={{ width: '38px', height: '38px' }}>
                         {isActive && (
                           <div className="absolute inset-0 rounded-full bg-[#b45309]/10 shadow-[0_0_8px_rgba(180,83,9,0.3)] border border-[#b45309]/30" />
                         )}
                         <span
                           className="material-symbols-outlined relative z-10 transition-all duration-300"
                           style={{
-                            fontSize: '24px',
+                            fontSize: '28px',
                             color: isActive ? '#b45309' : '#9ca3af'
                           }}
                         >
@@ -293,7 +333,7 @@ const App = () => {
                       <span
                         className="relative z-10 transition-colors duration-300"
                         style={{
-                          fontSize: '10px',
+                          fontSize: '12px',
                           fontWeight: 700,
                           letterSpacing: '0.05em',
                           marginTop: '2px',
@@ -306,14 +346,13 @@ const App = () => {
                   );
                 })}
               </nav>
-            </div>
           </div>
         </div>
       ) : null}
 
       {/* Main Content Area - Full Width with Max Constraint */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative ref-body">
-        <div className="flex-1 w-full h-full overflow-y-auto relative">
+        <div className="flex-1 w-full h-full overflow-y-auto relative" id="main-scroll-container">
           <div className="h-full w-full max-w-[1920px] mx-auto bg-transparent">
             {renderScreen()}
           </div>

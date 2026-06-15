@@ -177,10 +177,10 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
 
     const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
 
-    const toggleExpand = (clientName: string) => {
+    const toggleExpand = (groupKey: string) => {
         setExpandedClients(prev => ({
             ...prev,
-            [clientName]: !prev[clientName]
+            [groupKey]: !prev[groupKey]
         }));
     };
 
@@ -195,13 +195,16 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
         const groups: Record<string, any[]> = {};
         filtered.forEach(comm => {
             const clientName = comm.clientName || comm.client || 'Cliente';
-            if (!groups[clientName]) {
-                groups[clientName] = [];
+            const dateVal = comm.scheduledDate || comm.date || '';
+            const groupKey = `${clientName}_${dateVal}`;
+            if (!groups[groupKey]) {
+                groups[groupKey] = [];
             }
-            groups[clientName].push(comm);
+            groups[groupKey].push(comm);
         });
 
-        return Object.entries(groups).map(([clientName, list]) => {
+        return Object.entries(groups).map(([groupKey, list]) => {
+            const clientName = list[0].clientName || list[0].client || 'Cliente';
             const totalServiceValue = list.reduce((sum, c) => sum + (c.serviceValue || 0), 0);
             const totalDiscountValue = list.reduce((sum, c) => sum + (c.discountValue || 0), 0);
             const totalCommissionValue = list.reduce((sum, c) => sum + (c.commissionValue || 0), 0);
@@ -214,14 +217,13 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                 return d ? new Date(d + 'T12:00:00').toLocaleDateString('pt-BR') : '';
             }).filter(Boolean)));
             
-            // list[0] is typically the latest or earliest depending on source order. 
-            // We just format a nice range if there are multiple dates.
-            const dateStr = dates.length === 0 ? '' : dates.length === 1 ? dates[0] : `${dates[dates.length - 1]} - ${dates[0]}`;
+            const dateStr = dates.length === 0 ? '' : dates[0];
 
             const allPaid = list.every(c => c.status === 'paid');
             const status = allPaid ? 'paid' : 'pending';
 
             return {
+                groupKey,
                 clientName,
                 isGroup: list.length > 1,
                 servicesCount: list.length,
@@ -612,13 +614,13 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
         <div className="w-full py-4 px-2 lg:px-8 selection:bg-[#b45309]/20 relative custom-scrollbar font-sans text-white">
             <main className="max-w-[1180px] mx-auto flex flex-col gap-3 pb-20">
 
-                <header className="flex flex-row justify-between items-center gap-2 bg-[#1f2937]/50 backdrop-blur-md border border-white/5 rounded-full pr-2 pl-2 py-1 shadow-xl h-[56px] relative z-50">
+                <header className="flex flex-row justify-between items-center gap-2 bg-[#1f2937]/50 backdrop-blur-md border border-white/5 rounded-xl pr-2 pl-2 py-1 shadow-xl h-[56px] relative z-50">
                     <div className="flex items-center gap-1">
                         {['Diário', 'Mês', 'Ano', 'Personalizado'].map((period) => (
                             <button
                                 key={period}
                                 onClick={() => setPeriodFilter(period.toLowerCase())}
-                                className={`px-4 h-9 rounded-full text-xs font-black uppercase tracking-wider transition-all flex items-center gap-0.5 ${periodFilter === period.toLowerCase()
+                                className={`px-4 h-9 rounded-xl text-xs font-black uppercase tracking-wider transition-all flex items-center gap-0.5 ${periodFilter === period.toLowerCase()
                                         ? 'bg-[#b45309] text-white shadow-[0_2px_12px_rgba(180,83,9,0.4)]'
                                         : 'text-white/60 hover:text-white hover:bg-white/5 border border-transparent'
                                     }`}
@@ -638,7 +640,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                         )}
                     </div>
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-3 bg-white/5 border border-white/10 pl-5 pr-1.5 py-1.5 rounded-full hover:bg-white/10 transition-colors cursor-pointer group">
+                        <div className="flex items-center gap-3 bg-white/5 border border-white/10 pl-5 pr-1.5 py-1.5 rounded-xl hover:bg-white/10 transition-colors cursor-pointer group">
                             <span className="text-sm font-black text-white uppercase tracking-widest">
                                 {role === 'admin' ? 'Admin ' : role === 'manager' ? 'Gerente ' : role === 'receptionist' ? 'Rec. ' : ''}
                                 <span className="text-[#b45309] ml-1">
@@ -1028,9 +1030,9 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                             <tbody className="divide-y divide-white/5">
                                 {groupedCommissions && groupedCommissions.length > 0 ? groupedCommissions
                                     .map((group: any, idx: number) => {
-                                        const isExpanded = expandedClients[group.clientName];
+                                        const isExpanded = expandedClients[group.groupKey];
                                         return (
-                                            <React.Fragment key={group.clientName || `group-${idx}`}>
+                                            <React.Fragment key={group.groupKey || `group-${idx}`}>
                                                 <tr className="hover:bg-white/[0.02] transition-colors group">
                                                     <td className="px-4 py-4 text-center">
                                                         {group.isGroup ? (
@@ -1063,7 +1065,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                                         <div className="flex items-center gap-2">
                                                             {group.isGroup ? (
                                                                 <button
-                                                                    onClick={() => toggleExpand(group.clientName)}
+                                                                    onClick={() => toggleExpand(group.groupKey)}
                                                                     className="focus:outline-none text-[#b45309] hover:brightness-125 transition-all flex items-center justify-center p-1 rounded hover:bg-white/5"
                                                                 >
                                                                     <span className={`material-symbols-outlined text-lg transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} style={{ fontVariationSettings: "'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 24" }}>

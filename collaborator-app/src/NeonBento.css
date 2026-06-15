@@ -9,7 +9,7 @@
   --nb-text-primary: #f1f5f9;
   --nb-text-secondary: #64748b;
   --nb-transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
-  --nb-radius-card: 40px;
+  --nb-radius-card: 10px;
 }
 
 .neon-bento-hub {

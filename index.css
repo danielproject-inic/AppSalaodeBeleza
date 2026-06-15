@@ -380,3 +380,43 @@ input[type="number"] {
     border-color: rgba(245, 158, 11, 0.5);
     background: rgba(255, 255, 255, 0.07);
 }
+
+/* ============================================
+   GLOBAL BORDER RADIUS OVERRIDES (LESS ROUNDED)
+   ============================================ */
+.rounded-3xl,
+.rounded-2xl,
+.rounded-xl,
+.rounded-lg,
+.rounded-md,
+.rounded-\[2\.5rem\],
+.rounded-\[2rem\],
+.rounded-\[1\.5rem\],
+.rounded-\[1\.25rem\],
+.rounded-\[1\.75rem\],
+.glass-card,
+.ref-panel,
+.ref-card,
+.ref-deboss,
+.ref-btn,
+.ref-tag-warm {
+  border-radius: 10px !important;
+}
+
+/* Corner-specific overrides */
+.rounded-t-3xl, .rounded-t-2xl, .rounded-t-xl, .rounded-t-lg, .rounded-t-md, .rounded-t-\[2\.5rem\], .rounded-t-\[2rem\], .rounded-t-\[1\.5rem\] {
+  border-top-left-radius: 10px !important;
+  border-top-right-radius: 10px !important;
+}
+.rounded-b-3xl, .rounded-b-2xl, .rounded-b-xl, .rounded-b-lg, .rounded-b-md, .rounded-b-\[2\.5rem\], .rounded-b-\[2rem\], .rounded-b-\[1\.5rem\] {
+  border-bottom-left-radius: 10px !important;
+  border-bottom-right-radius: 10px !important;
+}
+.rounded-l-3xl, .rounded-l-2xl, .rounded-l-xl, .rounded-l-lg, .rounded-l-md, .rounded-l-\[2\.5rem\], .rounded-l-\[2rem\], .rounded-l-\[1\.5rem\] {
+  border-top-left-radius: 10px !important;
+  border-bottom-left-radius: 10px !important;
+}
+.rounded-r-3xl, .rounded-r-2xl, .rounded-r-xl, .rounded-r-lg, .rounded-r-md, .rounded-r-\[2\.5rem\], .rounded-r-\[2rem\], .rounded-r-\[1\.5rem\] {
+  border-top-right-radius: 10px !important;
+  border-bottom-right-radius: 10px !important;
+}

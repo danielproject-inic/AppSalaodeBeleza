@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { useTransactions } from '../hooks/useTransactions';
 import { useBills } from '../hooks/useBills';
 import { useAppointments } from '../hooks/useAppointments';
@@ -177,6 +178,69 @@ const CashFlow = () => {
     const [tempSelPro, setTempSelPro] = useState<string>('');
     const [tempSelService, setTempSelService] = useState<ServiceFlat | null>(null);
 
+    const [managerEmail, setManagerEmail] = useState('');
+    const [managerPassword, setManagerPassword] = useState('');
+    const [isDiscountAuthorized, setIsDiscountAuthorized] = useState(false);
+    const [authError, setAuthError] = useState('');
+    const [isValidatingAuth, setIsValidatingAuth] = useState(false);
+
+    useEffect(() => {
+        setIsDiscountAuthorized(false);
+        setAuthError('');
+    }, [paymentDiscountPercent]);
+
+    const needsManagerAuth = useMemo(() => {
+        const hasDiscount = (parseFloat(paymentDiscountPercent) || 0) > 0;
+        const isCard = ['Crédito', 'Débito'].includes(transMethod);
+        const isUserNotManager = !['admin', 'manager'].includes(role || '');
+        return hasDiscount && isCard && isUserNotManager;
+    }, [paymentDiscountPercent, transMethod, role]);
+
+    const handleValidateManagerAuth = async () => {
+        if (!managerEmail.trim() || !managerPassword.trim()) {
+            setAuthError('Preencha o e-mail e a senha do gerente.');
+            return;
+        }
+        setIsValidatingAuth(true);
+        setAuthError('');
+        try {
+            const tempSupabase = createClient(
+                import.meta.env.VITE_SUPABASE_URL || '',
+                import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+                { auth: { persistSession: false } }
+            );
+            const { data: authData, error: authErr } = await tempSupabase.auth.signInWithPassword({
+                email: managerEmail,
+                password: managerPassword
+            });
+            if (authErr) {
+                setAuthError('Credenciais inválidas.');
+                setIsDiscountAuthorized(false);
+                return;
+            }
+            if (authData?.user) {
+                const { data: profileData, error: profileErr } = await supabase
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', authData.user.id)
+                    .single();
+                
+                if (profileErr || !profileData || !['admin', 'manager'].includes(profileData.role || '')) {
+                    setAuthError('Este usuário não possui permissão de gerente.');
+                    setIsDiscountAuthorized(false);
+                } else {
+                    setIsDiscountAuthorized(true);
+                    setAuthError('');
+                }
+            }
+        } catch (err: any) {
+            setAuthError('Erro ao validar: ' + err.message);
+            setIsDiscountAuthorized(false);
+        } finally {
+            setIsValidatingAuth(false);
+        }
+    };
+
     // --- Mapping Logic ---
     const professionalsList = useMemo(() => dbProfessionals.map(p => p.name), [dbProfessionals]);
 
@@ -335,6 +399,11 @@ const CashFlow = () => {
         setPendingDueDate('');
         setSelectedPendingTransaction(null);
         setResolvePaymentMethod('');
+        setManagerEmail('');
+        setManagerPassword('');
+        setIsDiscountAuthorized(false);
+        setAuthError('');
+        setIsValidatingAuth(false);
     };
 
     const handleOpenPayment = (client: ScheduledClient) => {
@@ -417,13 +486,19 @@ const CashFlow = () => {
 
     const handleProcessPayment = async () => {
         if (isProcessingPayment) return;
+        
+        if (needsManagerAuth && !isDiscountAuthorized) {
+            alert('A autorização do gerente é obrigatória para conceder desconto em cartão.');
+            return;
+        }
+
         setIsProcessingPayment(true);
 
         try {
             const subtotal = cartItems.reduce((acc, i) => acc + i.price, 0);
 
             let discount = 0;
-            if (['PIX', 'Dinheiro'].includes(transMethod)) {
+            if (['PIX', 'Dinheiro', 'Crédito', 'Débito'].includes(transMethod)) {
                 const percent = parseFloat(paymentDiscountPercent) || 0;
                 discount = (subtotal * percent) / 100;
             }
@@ -1525,7 +1600,7 @@ const CashFlow = () => {
                                                 </div>
 
                                                 <div className="space-y-4">
-                                                    {['PIX', 'Dinheiro'].includes(transMethod) && (
+                                                    {['PIX', 'Dinheiro', 'Crédito', 'Débito'].includes(transMethod) && (
                                                         <div className="space-y-1">
                                                             <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Desconto Opcional (%)</label>
                                                             <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
@@ -1538,6 +1613,49 @@ const CashFlow = () => {
                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
                                                                 />
                                                             </div>
+                                                        </div>
+                                                    )}
+
+                                                    {needsManagerAuth && (
+                                                        <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3 mt-2 animate-in slide-in-from-top-2 duration-300">
+                                                            <div className="flex items-center gap-2 text-amber-400">
+                                                                <span className="material-symbols-outlined text-lg">shield_person</span>
+                                                                <span className="text-[10px] font-black uppercase tracking-widest">Autorização do Gerente Necessária</span>
+                                                            </div>
+                                                            {isDiscountAuthorized ? (
+                                                                <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                                                    <span className="material-symbols-outlined text-lg">verified</span>
+                                                                    <span className="text-xs font-bold">Desconto Autorizado por Gerente</span>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-2">
+                                                                    <input
+                                                                        type="email"
+                                                                        placeholder="E-mail do Gerente"
+                                                                        value={managerEmail}
+                                                                        onChange={e => setManagerEmail(e.target.value)}
+                                                                        className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
+                                                                    />
+                                                                    <input
+                                                                        type="password"
+                                                                        placeholder="Senha do Gerente"
+                                                                        value={managerPassword}
+                                                                        onChange={e => setManagerPassword(e.target.value)}
+                                                                        className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
+                                                                    />
+                                                                    {authError && (
+                                                                        <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider">{authError}</p>
+                                                                    )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleValidateManagerAuth}
+                                                                        disabled={isValidatingAuth || !managerEmail || !managerPassword}
+                                                                        className="w-full py-2 bg-amber-500 disabled:bg-white/5 disabled:text-white/20 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all border-none font-sans cursor-pointer"
+                                                                    >
+                                                                        {isValidatingAuth ? 'Validando...' : 'Autorizar Desconto'}
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
 
@@ -1628,11 +1746,12 @@ const CashFlow = () => {
                                                             disabled={
                                                                 isProcessingPayment ||
                                                                 (transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) ||
-                                                                (transMethod === 'Pendente' && !pendingDueDate)
+                                                                (transMethod === 'Pendente' && !pendingDueDate) ||
+                                                                (needsManagerAuth && !isDiscountAuthorized)
                                                             }
                                                             onClick={handleProcessPayment}
                                                             className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
-                                                                ${(isProcessingPayment || (transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) || (transMethod === 'Pendente' && !pendingDueDate))
+                                                                ${(isProcessingPayment || (transMethod === 'Dinheiro' && (!cashReceived || (parseFloat(cashReceived) || 0) < (Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))))) || (transMethod === 'Pendente' && !pendingDueDate) || (needsManagerAuth && !isDiscountAuthorized))
                                                                     ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
                                                                     : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
                                                         >

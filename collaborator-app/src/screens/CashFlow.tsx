@@ -129,6 +129,17 @@ const CashFlow = () => {
         const todayStr = `${todayObj.getFullYear()}-${String(todayObj.getMonth() + 1).padStart(2, '0')}-${String(todayObj.getDate()).padStart(2, '0')}`;
         return openedDate < todayStr;
     }, [activeSession]);
+
+    useEffect(() => {
+        if (!sessionsLoading && activeSession) {
+            const openedDate = new Date(activeSession.opened_at).toLocaleDateString('en-CA');
+            const todayStr = getTodayDate();
+            if (openedDate < todayStr) {
+                setSelectedDate(openedDate);
+            }
+        }
+    }, [activeSession, sessionsLoading]);
+
     const operador = activeSession ? (activeSession.opened_by_profile as any)?.full_name || 'Operador' : '';
     const valorInicial = activeSession ? activeSession.opening_balance.toString() : '0';
 
@@ -175,6 +186,8 @@ const CashFlow = () => {
     const [selectedPendingTransaction, setSelectedPendingTransaction] = useState<any>(null);
     const [resolvePaymentMethod, setResolvePaymentMethod] = useState('');
     const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+    const [isSplitPayment, setIsSplitPayment] = useState(false);
+    const [splitAmounts, setSplitAmounts] = useState({ PIX: '', Dinheiro: '', Crédito: '', Débito: '', Pendente: '' });
     const [tempSelPro, setTempSelPro] = useState<string>('');
     const [tempSelService, setTempSelService] = useState<ServiceFlat | null>(null);
 
@@ -191,10 +204,9 @@ const CashFlow = () => {
 
     const needsManagerAuth = useMemo(() => {
         const hasDiscount = (parseFloat(paymentDiscountPercent) || 0) > 0;
-        const isCard = ['Crédito', 'Débito'].includes(transMethod);
         const isUserNotManager = !['admin', 'manager'].includes(role || '');
-        return hasDiscount && isCard && isUserNotManager;
-    }, [paymentDiscountPercent, transMethod, role]);
+        return hasDiscount && isUserNotManager;
+    }, [paymentDiscountPercent, role]);
 
     const handleValidateManagerAuth = async () => {
         if (!managerEmail.trim() || !managerPassword.trim()) {
@@ -308,6 +320,13 @@ const CashFlow = () => {
         });
     }, [dbAppointments, dbClients, dbProfessionals, dbServices]);
 
+    const hasPendingCheckouts = useMemo(() => {
+        if (!isSessionFromPreviousDay || !activeSession) return false;
+        const openedDate = new Date(activeSession.opened_at).toLocaleDateString('en-CA');
+        return scheduledClients.some(client => client.date === openedDate && client.status === 'em_atendimento');
+    }, [scheduledClients, isSessionFromPreviousDay, activeSession]);
+
+
     const transactions: Transaction[] = useMemo(() => {
         let filtered = dbTransactions;
 
@@ -404,6 +423,8 @@ const CashFlow = () => {
         setIsDiscountAuthorized(false);
         setAuthError('');
         setIsValidatingAuth(false);
+        setIsSplitPayment(false);
+        setSplitAmounts({ PIX: '', Dinheiro: '', Crédito: '', Débito: '', Pendente: '' });
     };
 
     const handleOpenPayment = (client: ScheduledClient) => {
@@ -488,31 +509,27 @@ const CashFlow = () => {
         if (isProcessingPayment) return;
         
         if (needsManagerAuth && !isDiscountAuthorized) {
-            alert('A autorização do gerente é obrigatória para conceder desconto em cartão.');
+            alert('A autorização do gerente é obrigatória para conceder desconto.');
             return;
         }
 
         setIsProcessingPayment(true);
 
         try {
-            const subtotal = cartItems.reduce((acc, i) => acc + i.price, 0);
-
-            let discount = 0;
-            if (['PIX', 'Dinheiro', 'Crédito', 'Débito'].includes(transMethod)) {
-                const percent = parseFloat(paymentDiscountPercent) || 0;
-                discount = (subtotal * percent) / 100;
-            }
-
-            const total = Math.max(0, subtotal - discount);
-
-            if (transMethod === 'Dinheiro') {
-                const received = parseFloat(cashReceived) || 0;
-                if (received < total) {
-                    alert('O valor recebido em dinheiro é menor que o total líquido.');
-                    setIsProcessingPayment(false);
-                    return;
+            const getTransactionCreatedAt = () => {
+                if (isSessionFromPreviousDay && activeSession) {
+                    const sessionDate = new Date(activeSession.opened_at);
+                    const now = new Date();
+                    sessionDate.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
+                    return sessionDate.toISOString();
                 }
-            }
+                return new Date().toISOString();
+            };
+
+            const subtotal = cartItems.reduce((acc, i) => acc + i.price, 0);
+            const percent = parseFloat(paymentDiscountPercent) || 0;
+            const discount = (subtotal * percent) / 100;
+            const total = Math.max(0, subtotal - discount);
 
             // Get unique professionals involved
             const involvedProsNames = Array.from(new Set(cartItems.map(i => i.professional || transProf || 'N/A')));
@@ -521,57 +538,191 @@ const CashFlow = () => {
             const primaryPro = dbProfessionals.find(p => p.name === involvedProsNames[0]);
             const dbClient = dbClients.find(c => c.name === selectedClient?.name);
 
-            if (transMethod === 'Pendente') {
-                if (!selectedClient || !dbClient) {
-                    alert('Para pagamentos pendentes, é obrigatório selecionar um cliente cadastrado.');
+            if (isSplitPayment) {
+                const activeMethods = Object.entries(splitAmounts)
+                    .map(([method, val]) => ({ method, amount: parseFloat(val) || 0 }))
+                    .filter(item => item.amount > 0);
+
+                if (activeMethods.length === 0) {
+                    alert('Por favor, informe o valor para pelo menos uma forma de pagamento.');
                     setIsProcessingPayment(false);
                     return;
                 }
-                if (!pendingDueDate) {
-                    alert('Por favor, selecione a data prometida para o pagamento.');
+
+                const valDinheiro = parseFloat(splitAmounts.Dinheiro) || 0;
+                if (valDinheiro > 0) {
+                    const received = parseFloat(cashReceived) || 0;
+                    if (received < valDinheiro) {
+                        alert('O valor recebido em dinheiro é menor que a parte a ser paga em dinheiro.');
+                        setIsProcessingPayment(false);
+                        return;
+                    }
+                }
+
+                const valPendente = parseFloat(splitAmounts.Pendente) || 0;
+                if (valPendente > 0) {
+                    if (!selectedClient || !dbClient) {
+                        alert('Para pagamentos pendentes, é obrigatório selecionar um cliente cadastrado.');
+                        setIsProcessingPayment(false);
+                        return;
+                    }
+                    if (!pendingDueDate) {
+                        alert('Por favor, selecione a data prometida para o pagamento.');
+                        setIsProcessingPayment(false);
+                        return;
+                    }
+                }
+
+                // First active method is the parent transaction
+                const firstMethod = activeMethods[0];
+
+                let parentObs = paymentObservation;
+                if (firstMethod.method === 'Dinheiro') {
+                    const received = parseFloat(cashReceived) || 0;
+                    const change = Math.max(0, received - firstMethod.amount);
+                    const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
+                    parentObs = parentObs ? `${parentObs} ${cashDetails}` : cashDetails;
+                } else if (firstMethod.method === 'Pendente') {
+                    const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
+                    parentObs = parentObs ? `${dueDateInfo} ${parentObs}` : dueDateInfo;
+                }
+                parentObs = `[Pgto Dividido - Principal] ${parentObs}`;
+
+                const finalCartItems = cartItems.map(item => ({
+                    ...item,
+                    servicoTerminadoAt: getTransactionCreatedAt()
+                }));
+
+                const parentTransData: any = {
+                    type: 'entrada',
+                    description: selectedClient ? `Pgto: ${selectedClient.name}` : transDesc || 'Venda Avulsa',
+                    category: 'Serviço',
+                    amount: firstMethod.amount,
+                    payment_method: firstMethod.method,
+                    status: firstMethod.method === 'Pendente' ? 'pendente' : 'pago',
+                    client_id: dbClient?.id || null,
+                    professional_id: primaryPro?.id || null,
+                    discount: discount, // Full discount goes to parent
+                    items_json: finalCartItems, // Full items go to parent
+                    observation: parentObs,
+                    cash_session_id: activeSession?.id || null,
+                    created_at: getTransactionCreatedAt()
+                };
+
+                const parentTransResult = await addTransaction(parentTransData);
+                if (!parentTransResult) {
+                    alert('Erro ao salvar transação principal.');
                     setIsProcessingPayment(false);
                     return;
                 }
-            }
 
-            let finalObs = paymentObservation;
-            if (transMethod === 'Dinheiro') {
-                const received = parseFloat(cashReceived) || 0;
-                const change = Math.max(0, received - total);
-                const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
-                finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
-            } else if (transMethod === 'Pendente') {
-                const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
-                finalObs = finalObs ? `${dueDateInfo} ${finalObs}` : dueDateInfo;
-            }
+                const parentId = parentTransResult.id;
 
-            const finalCartItems = cartItems.map(item => ({
-                ...item,
-                servicoTerminadoAt: new Date().toISOString()
-            }));
+                // Create child transactions for remaining active methods
+                for (let i = 1; i < activeMethods.length; i++) {
+                    const childMethod = activeMethods[i];
+                    let childObs = `[Pgto Dividido - Vinculado ao ID: ${parentId}]`;
+                    if (childMethod.method === 'Dinheiro') {
+                        const received = parseFloat(cashReceived) || 0;
+                        const change = Math.max(0, received - childMethod.amount);
+                        const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
+                        childObs = `${childObs} ${cashDetails}`;
+                    } else if (childMethod.method === 'Pendente') {
+                        const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
+                        childObs = `${dueDateInfo} ${childObs}`;
+                    }
 
-            const newTrans: any = {
-                type: 'entrada',
-                description: selectedClient ? `Pgto: ${selectedClient.name}` : transDesc || 'Venda Avulsa',
-                category: 'Serviço',
-                amount: total,
-                payment_method: transMethod,
-                status: transMethod === 'Pendente' ? 'pendente' : 'pago',
-                client_id: dbClient?.id || null,
-                professional_id: primaryPro?.id || null,
-                discount: discount,
-                items_json: finalCartItems,
-                observation: finalObs,
-                cash_session_id: activeSession?.id || null
-            };
+                    const childTransData: any = {
+                        type: 'entrada',
+                        description: selectedClient ? `Pgto: ${selectedClient.name} (Parte)` : transDesc || 'Venda Avulsa (Parte)',
+                        category: 'Serviço',
+                        amount: childMethod.amount,
+                        payment_method: childMethod.method,
+                        status: childMethod.method === 'Pendente' ? 'pendente' : 'pago',
+                        client_id: dbClient?.id || null,
+                        professional_id: primaryPro?.id || null,
+                        discount: 0,
+                        items_json: [], // Empty items_json to prevent double commissions
+                        observation: childObs,
+                        cash_session_id: activeSession?.id || null,
+                        created_at: getTransactionCreatedAt()
+                    };
 
-            await addTransaction(newTrans);
+                    await addTransaction(childTransData);
+                }
 
-            if (selectedClient && selectedClient.id) {
-                await updateAppointment(selectedClient.id, {
-                    status: transMethod === 'Pendente' ? 'concluido' : 'pago',
-                    servico_terminado_at: new Date().toISOString()
-                });
+                if (selectedClient && selectedClient.id) {
+                    const hasPendente = activeMethods.some(m => m.method === 'Pendente');
+                    await updateAppointment(selectedClient.id, {
+                        status: hasPendente ? 'concluido' : 'pago',
+                        servico_terminado_at: getTransactionCreatedAt()
+                    });
+                }
+
+            } else {
+                // Single Payment Mode
+                if (transMethod === 'Dinheiro') {
+                    const received = parseFloat(cashReceived) || 0;
+                    if (received < total) {
+                        alert('O valor recebido em dinheiro é menor que o total líquido.');
+                        setIsProcessingPayment(false);
+                        return;
+                    }
+                }
+
+                if (transMethod === 'Pendente') {
+                    if (!selectedClient || !dbClient) {
+                        alert('Para pagamentos pendentes, é obrigatório selecionar um cliente cadastrado.');
+                        setIsProcessingPayment(false);
+                        return;
+                    }
+                    if (!pendingDueDate) {
+                        alert('Por favor, selecione a data prometida para o pagamento.');
+                        setIsProcessingPayment(false);
+                        return;
+                    }
+                }
+
+                let finalObs = paymentObservation;
+                if (transMethod === 'Dinheiro') {
+                    const received = parseFloat(cashReceived) || 0;
+                    const change = Math.max(0, received - total);
+                    const cashDetails = `[Dinheiro Recebido: ${formatCurrency(received)} | Troco: ${formatCurrency(change)}]`;
+                    finalObs = finalObs ? `${finalObs} ${cashDetails}` : cashDetails;
+                } else if (transMethod === 'Pendente') {
+                    const dueDateInfo = `[Vencimento: ${pendingDueDate}]`;
+                    finalObs = finalObs ? `${dueDateInfo} ${finalObs}` : dueDateInfo;
+                }
+
+                const finalCartItems = cartItems.map(item => ({
+                    ...item,
+                    servicoTerminadoAt: getTransactionCreatedAt()
+                }));
+
+                const newTrans: any = {
+                    type: 'entrada',
+                    description: selectedClient ? `Pgto: ${selectedClient.name}` : transDesc || 'Venda Avulsa',
+                    category: 'Serviço',
+                    amount: total,
+                    payment_method: transMethod,
+                    status: transMethod === 'Pendente' ? 'pendente' : 'pago',
+                    client_id: dbClient?.id || null,
+                    professional_id: primaryPro?.id || null,
+                    discount: discount,
+                    items_json: finalCartItems,
+                    observation: finalObs,
+                    cash_session_id: activeSession?.id || null,
+                    created_at: getTransactionCreatedAt()
+                };
+
+                await addTransaction(newTrans);
+
+                if (selectedClient && selectedClient.id) {
+                    await updateAppointment(selectedClient.id, {
+                        status: transMethod === 'Pendente' ? 'concluido' : 'pago',
+                        servico_terminado_at: getTransactionCreatedAt()
+                    });
+                }
             }
 
             setModalMode('none');
@@ -828,7 +979,7 @@ const CashFlow = () => {
             )}
 
             {/* Forced Closure Overlay for Caixas left open on previous days */}
-            {isCaixaOpen && isSessionFromPreviousDay && (
+            {isCaixaOpen && isSessionFromPreviousDay && !hasPendingCheckouts && (
                 <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-[#0f172a]/95 backdrop-blur-xl p-4 overflow-hidden">
                     <div className="max-w-md w-full max-h-[90vh] overflow-y-auto bg-[#1e293b] border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col p-6 md:p-8 space-y-4 md:space-y-6 custom-scrollbar">
                         <div className="text-center space-y-2">
@@ -928,7 +1079,9 @@ const CashFlow = () => {
                     <div className="flex items-center gap-1 bg-white rounded-2xl border border-slate-300 shadow-none p-1">
                         <button
                             onClick={() => adjustDate(1)}
-                            className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#b87333] transition-all active:scale-90 flex items-center justify-center"
+                            disabled={isSessionFromPreviousDay}
+                            className={`p-1.5 rounded-lg text-slate-400 transition-all flex items-center justify-center
+                                ${isSessionFromPreviousDay ? 'opacity-40 cursor-not-allowed' : 'hover:bg-slate-100 hover:text-[#b87333] active:scale-90'}`}
                             title="Próximo Dia"
                         >
                             <span className="material-symbols-outlined text-lg">expand_less</span>
@@ -939,14 +1092,18 @@ const CashFlow = () => {
                             <input
                                 type="date"
                                 value={selectedDate}
+                                disabled={isSessionFromPreviousDay}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedDate(e.target.value)}
-                                className="bg-transparent border-none text-xs font-bold text-slate-700 outline-none cursor-pointer"
+                                className={`bg-transparent border-none text-xs font-bold text-slate-700 outline-none
+                                    ${isSessionFromPreviousDay ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
                             />
                         </div>
 
                         <button
                             onClick={() => adjustDate(-1)}
-                            className="p-1.5 hover:bg-[#e8e2d4]/40 rounded-lg text-slate-400 hover:text-cyan-500 transition-all active:scale-90 flex items-center justify-center"
+                            disabled={isSessionFromPreviousDay}
+                            className={`p-1.5 rounded-lg text-slate-400 transition-all flex items-center justify-center
+                                ${isSessionFromPreviousDay ? 'opacity-40 cursor-not-allowed' : 'hover:bg-[#e8e2d4]/40 hover:text-cyan-500 active:scale-90'}`}
                             title="Dia Anterior"
                         >
                             <span className="material-symbols-outlined text-lg">expand_more</span>
@@ -977,6 +1134,20 @@ const CashFlow = () => {
             <main className="flex-1 flex overflow-hidden p-6 gap-6 relative z-10">
                 {/* Main Content Area */}
                 <div className="flex-[2] flex flex-col bg-[#111827] border border-white/5 rounded-3xl overflow-hidden shadow-2xl">
+                    {/* Warning Banner for Pending Checkouts of Previous Day */}
+                    {isSessionFromPreviousDay && hasPendingCheckouts && (
+                        <div className="bg-amber-500/20 border-b border-amber-500/30 px-6 py-4 flex items-center justify-between animate-pulse">
+                            <div className="flex items-center gap-3">
+                                <span className="material-symbols-outlined text-amber-500 text-2xl">warning</span>
+                                <div>
+                                    <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider">Atendimentos Pendentes no Caixa Anterior</h4>
+                                    <p className="text-xs text-white/70 mt-0.5 uppercase tracking-wide">
+                                        Existem atendimentos de {new Date(activeSession.opened_at).toLocaleDateString('pt-BR')} pendentes de pagamento. Finalize-os para poder encerrar o caixa.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                     {/* Tabs Navigation */}
                     <div className="flex items-center gap-8 px-10 py-6 border-b border-white/5 bg-[#1f2937]/30">
                         {[
@@ -1045,40 +1216,43 @@ const CashFlow = () => {
                                     </div>
                                     <div className="h-[1px] flex-1 bg-white/10"></div>
                                 </div>
-                                {group.items.map(t => (
-                                    <div key={t.id} className="flex items-center justify-between p-5 rounded-[1.5rem] bg-white border border-slate-300 hover:border-emerald-300 hover:shadow-md transition-all">
-                                        <div className="flex items-center gap-4">
-                                            <div className="p-3.5 rounded-2xl bg-emerald-50 text-emerald-500 border border-emerald-100">
-                                                <span className="material-symbols-outlined">arrow_downward</span>
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-slate-800">{t.description}</h3>
-                                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                                                    <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md">{t.time}</span>
-                                                    {t.items && t.items.length > 0 ? (
-                                                        t.items.map((item, idx) => (
-                                                            <div key={idx} className="flex items-center gap-1.5 bg-emerald-50/80 border border-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider">
-                                                                <span>{item.title}</span>
-                                                                {item.professional && (
-                                                                    <>
-                                                                        <span className="text-emerald-300">|</span>
-                                                                        <span className="text-emerald-600 font-bold">{item.professional}</span>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <span className="text-xs text-slate-400 italic">Serviço avulso</span>
-                                                    )}
+                                {group.items.map(t => {
+                                    const isPendente = t.status === 'pendente';
+                                    return (
+                                        <div key={t.id} className={`flex items-center justify-between p-5 rounded-[1.5rem] bg-white border border-slate-300 ${isPendente ? 'hover:border-rose-300 hover:shadow-rose-50/50' : 'hover:border-emerald-300 hover:shadow-emerald-50/50'} hover:shadow-md transition-all`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-3.5 rounded-2xl ${isPendente ? 'bg-rose-50 text-rose-500 border border-rose-100' : 'bg-emerald-50 text-emerald-500 border border-emerald-100'}`}>
+                                                    <span className="material-symbols-outlined">arrow_downward</span>
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800">{t.description}</h3>
+                                                    <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                        <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md">{t.time}</span>
+                                                        {t.items && t.items.length > 0 ? (
+                                                            t.items.map((item, idx) => (
+                                                                <div key={idx} className={`flex items-center gap-1.5 ${isPendente ? 'bg-rose-50/80 border border-rose-100 text-rose-800' : 'bg-emerald-50/80 border border-emerald-100 text-emerald-800'} px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-wider`}>
+                                                                    <span>{item.title}</span>
+                                                                    {item.professional && (
+                                                                        <>
+                                                                            <span className={isPendente ? 'text-rose-300' : 'text-emerald-300'}>|</span>
+                                                                            <span className={`font-bold ${isPendente ? 'text-rose-600' : 'text-emerald-600'}`}>{item.professional}</span>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            ))
+                                                        ) : (
+                                                            <span className="text-xs text-slate-400 italic">Serviço avulso</span>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <div className="text-right">
+                                                <p className={`font-mono ${isPendente ? 'text-rose-500' : 'text-emerald-500'} font-black text-xl`}>{formatCurrency(t.amount)}</p>
+                                                <p className={`text-[10px] ${isPendente ? 'text-rose-500 font-black' : 'text-slate-400 font-bold'} uppercase tracking-widest`}>{t.paymentMethod}</p>
+                                            </div>
                                         </div>
-                                        <div className="text-right">
-                                            <p className="font-mono text-emerald-500 font-black text-xl">{formatCurrency(t.amount)}</p>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.paymentMethod}</p>
-                                        </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         ))}
 
@@ -1566,26 +1740,324 @@ const CashFlow = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Payment Methods */}
-                                                <div className="space-y-3">
-                                                    <label className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] block">Forma de Pagamento</label>
-                                                    <div className="grid grid-cols-2 gap-3">
-                                                        <PaymentMethodBtn method="PIX" icon="qr_code_2" label="Pix" activeColor="bg-emerald-500 text-white" borderColor="border-emerald-500/50" />
-                                                        <PaymentMethodBtn method="Dinheiro" icon="payments" label="Dinheiro" activeColor="bg-amber-500 text-white" borderColor="border-amber-500/50" />
-                                                        <PaymentMethodBtn method="Crédito" icon="credit_card" label="Cartão Crédito" activeColor="bg-indigo-500 text-white" borderColor="border-indigo-500/50" />
-                                                        <PaymentMethodBtn method="Débito" icon="credit_score" label="Cartão Débito" activeColor="bg-blue-500 text-white" borderColor="border-blue-500/50" />
-                                                        <div className="col-span-2">
-                                                            <PaymentMethodBtn method="Pendente" icon="pending_actions" label="Pagar Depois (Pendente / Fiado)" activeColor="bg-rose-500 text-white" borderColor="border-rose-500/50" />
-                                                        </div>
-                                                    </div>
+                                                {/* Modo Dividido / Único Toggle */}
+                                                <div className="flex bg-[#111827]/40 border border-white/5 rounded-2xl p-1 mb-4">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setIsSplitPayment(false);
+                                                            setTransMethod('');
+                                                            setSplitAmounts({ PIX: '', Dinheiro: '', Crédito: '', Débito: '', Pendente: '' });
+                                                        }}
+                                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                                                            ${!isSplitPayment ? 'bg-[#0f172a] text-cyan-400 border border-white/5 shadow-lg' : 'text-white/40 hover:text-white'}`}
+                                                    >
+                                                        Pagamento Único
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setIsSplitPayment(true);
+                                                            setTransMethod('Split');
+                                                            setPaymentDiscountPercent('');
+                                                            setCashReceived('');
+                                                            setPendingDueDate('');
+                                                        }}
+                                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                                                            ${isSplitPayment ? 'bg-[#0f172a] text-cyan-400 border border-white/5 shadow-lg' : 'text-white/40 hover:text-white'}`}
+                                                    >
+                                                        Dividir Pagamento
+                                                    </button>
                                                 </div>
 
-                                                <button
-                                                    onClick={() => setModalMode('none')}
-                                                    className="w-full py-5 rounded-2xl text-white/30 font-black uppercase tracking-widest text-xs border border-white/10 hover:bg-white/5 hover:text-white transition-all mt-4"
-                                                >
-                                                    Cancelar Operação
-                                                </button>
+                                                {isSplitPayment ? (
+                                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                                         {/* Inputs of Split Amounts */}
+                                                         <div className="grid grid-cols-2 gap-4">
+                                                             {/* PIX */}
+                                                             <div className="space-y-1">
+                                                                 <label className="text-[10px] text-emerald-400 uppercase font-black tracking-widest px-2">Pix</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-emerald-400 text-lg">qr_code_2</span>
+                                                                     <input
+                                                                         type="number"
+                                                                         step="0.01"
+                                                                         placeholder="0.00"
+                                                                         value={splitAmounts.PIX}
+                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, PIX: e.target.value }))}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                     />
+                                                                 </div>
+                                                             </div>
+
+                                                             {/* Dinheiro */}
+                                                             <div className="space-y-1">
+                                                                 <label className="text-[10px] text-amber-400 uppercase font-black tracking-widest px-2">Dinheiro</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-amber-400 text-lg">payments</span>
+                                                                     <input
+                                                                         type="number"
+                                                                         step="0.01"
+                                                                         placeholder="0.00"
+                                                                         value={splitAmounts.Dinheiro}
+                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Dinheiro: e.target.value }))}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                     />
+                                                                 </div>
+                                                             </div>
+
+                                                             {/* Crédito */}
+                                                             <div className="space-y-1">
+                                                                 <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest px-2">Cartão Crédito</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-indigo-400 text-lg">credit_card</span>
+                                                                     <input
+                                                                         type="number"
+                                                                         step="0.01"
+                                                                         placeholder="0.00"
+                                                                         value={splitAmounts.Crédito}
+                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Crédito: e.target.value }))}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                     />
+                                                                 </div>
+                                                             </div>
+
+                                                             {/* Débito */}
+                                                             <div className="space-y-1">
+                                                                 <label className="text-[10px] text-blue-400 uppercase font-black tracking-widest px-2">Cartão Débito</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-blue-400 text-lg">credit_score</span>
+                                                                     <input
+                                                                         type="number"
+                                                                         step="0.01"
+                                                                         placeholder="0.00"
+                                                                         value={splitAmounts.Débito}
+                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Débito: e.target.value }))}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                     />
+                                                                 </div>
+                                                             </div>
+
+                                                             {/* Pendente */}
+                                                             <div className="col-span-2 space-y-1">
+                                                                 <label className="text-[10px] text-rose-400 uppercase font-black tracking-widest px-2">Pagar Depois (Pendente / Fiado)</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-rose-400 text-lg">pending_actions</span>
+                                                                     <input
+                                                                         type="number"
+                                                                         step="0.01"
+                                                                         placeholder="0.00"
+                                                                         value={splitAmounts.Pendente}
+                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Pendente: e.target.value }))}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                     />
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+
+                                                         {/* Condicionais de Dinheiro e Pendente */}
+                                                         {(parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (
+                                                             <div className="space-y-1 pl-4 border-l-2 border-amber-500/30 animate-in slide-in-from-top-2 duration-300">
+                                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Valor Recebido em Dinheiro (Obrigatório)</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-cyan-400 text-lg">payments</span>
+                                                                     <input
+                                                                         type="number"
+                                                                         step="0.01"
+                                                                         placeholder="0.00"
+                                                                         value={cashReceived}
+                                                                         onChange={e => setCashReceived(e.target.value)}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                         required
+                                                                     />
+                                                                 </div>
+                                                                 {cashReceived && (parseFloat(cashReceived) || 0) >= (parseFloat(splitAmounts.Dinheiro) || 0) && (
+                                                                     <p className="text-xs text-amber-400 font-bold px-2 mt-1">
+                                                                         Troco: {formatCurrency((parseFloat(cashReceived) || 0) - (parseFloat(splitAmounts.Dinheiro) || 0))}
+                                                                     </p>
+                                                                 )}
+                                                             </div>
+                                                         )}
+
+                                                         {(parseFloat(splitAmounts.Pendente) || 0) > 0 && (
+                                                             <div className="space-y-1 pl-4 border-l-2 border-rose-500/30 animate-in slide-in-from-top-2 duration-300">
+                                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Data Prometida para o Pagamento (Obrigatório)</label>
+                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                     <span className="material-symbols-outlined text-cyan-400 text-lg">calendar_today</span>
+                                                                     <input
+                                                                         type="date"
+                                                                         value={pendingDueDate}
+                                                                         onChange={e => setPendingDueDate(e.target.value)}
+                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
+                                                                         required
+                                                                     />
+                                                                 </div>
+                                                             </div>
+                                                         )}
+
+                                                         {/* Desconto */}
+                                                         <div className="space-y-1">
+                                                             <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Desconto Opcional (%)</label>
+                                                             <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                 <span className="material-symbols-outlined text-cyan-400 text-lg">percent</span>
+                                                                 <input
+                                                                     type="number"
+                                                                     placeholder="0"
+                                                                     value={paymentDiscountPercent}
+                                                                     onChange={e => setPaymentDiscountPercent(e.target.value)}
+                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                 />
+                                                             </div>
+                                                         </div>
+
+                                                         {/* Manager Auth */}
+                                                         {needsManagerAuth && (
+                                                             <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3 mt-2 animate-in slide-in-from-top-2 duration-300">
+                                                                 <div className="flex items-center gap-2 text-amber-400">
+                                                                     <span className="material-symbols-outlined text-lg">shield_person</span>
+                                                                     <span className="text-[10px] font-black uppercase tracking-widest">Autorização do Gerente Necessária</span>
+                                                                 </div>
+                                                                 {isDiscountAuthorized ? (
+                                                                     <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                                                         <span className="material-symbols-outlined text-lg">verified</span>
+                                                                         <span className="text-xs font-bold">Desconto Autorizado por Gerente</span>
+                                                                     </div>
+                                                                 ) : (
+                                                                     <div className="space-y-2">
+                                                                         <input
+                                                                             type="email"
+                                                                             placeholder="E-mail do Gerente"
+                                                                             value={managerEmail}
+                                                                             onChange={e => setManagerEmail(e.target.value)}
+                                                                             className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
+                                                                         />
+                                                                         <input
+                                                                             type="password"
+                                                                             placeholder="Senha do Gerente"
+                                                                             value={managerPassword}
+                                                                             onChange={e => setManagerPassword(e.target.value)}
+                                                                             className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
+                                                                         />
+                                                                         {authError && (
+                                                                             <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider">{authError}</p>
+                                                                         )}
+                                                                         <button
+                                                                             type="button"
+                                                                             onClick={handleValidateManagerAuth}
+                                                                             disabled={isValidatingAuth || !managerEmail || !managerPassword}
+                                                                             className="w-full py-2 bg-amber-500 disabled:bg-white/5 disabled:text-white/20 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all border-none font-sans cursor-pointer"
+                                                                         >
+                                                                             {isValidatingAuth ? 'Validando...' : 'Autorizar Desconto'}
+                                                                         </button>
+                                                                     </div>
+                                                                 )}
+                                                             </div>
+                                                         )}
+
+                                                         {/* Real-time Summary Card */}
+                                                         <div className="p-6 rounded-3xl bg-[#0f172a] text-white space-y-3 shadow-2xl border border-white/5 relative overflow-hidden group">
+                                                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
+                                                             <div className="relative z-10 space-y-2.5">
+                                                                 <div className="flex justify-between items-center text-xs">
+                                                                     <span className="text-white/40 font-black uppercase tracking-widest">Subtotal</span>
+                                                                     <span className="font-bold text-white/80">{formatCurrency(cartItems.reduce((a, b) => a + b.price, 0))}</span>
+                                                                 </div>
+                                                                 {parseFloat(paymentDiscountPercent) > 0 && (
+                                                                     <div className="flex justify-between items-center text-xs">
+                                                                         <span className="text-emerald-400 font-black uppercase tracking-widest">Desconto</span>
+                                                                         <span className="font-bold text-emerald-400">-{formatCurrency((cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100)}</span>
+                                                                     </div>
+                                                                 )}
+                                                                 <div className="flex justify-between items-center pt-2 border-t border-white/5 text-sm">
+                                                                     <span className="text-white/40 font-black uppercase tracking-widest">Total Líquido</span>
+                                                                     <span className="font-bold text-white">{formatCurrency(Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100))}</span>
+                                                                 </div>
+                                                                 <div className="flex justify-between items-center text-sm">
+                                                                     <span className="text-white/40 font-black uppercase tracking-widest">Total Informado</span>
+                                                                     <span className="font-bold text-white">{formatCurrency((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))}</span>
+                                                                 </div>
+                                                                 <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                                                                     <span className="text-cyan-400 font-black uppercase tracking-[0.2em] text-[10px]">Diferença</span>
+                                                                     <span className={`text-2xl font-black ${Math.abs(
+                                                                         Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                         ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                     ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`} style={{ fontFamily: 'Bebas Neue' }}>
+                                                                         {Math.abs(
+                                                                             Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                             ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                         ) < 0.01 ? 'R$ 0,00 (Pronto)' : formatCurrency(
+                                                                             Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                             ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                         )}
+                                                                     </span>
+                                                                 </div>
+                                                             </div>
+                                                         </div>
+
+                                                         {/* Action Buttons */}
+                                                         <div className="flex gap-3 pt-3">
+                                                             <button
+                                                                 onClick={() => setModalMode('none')}
+                                                                 className="flex-1 py-4 rounded-xl border border-white/10 text-white/40 font-black uppercase tracking-widest text-[10px] hover:bg-white/5 hover:text-white transition-all"
+                                                             >
+                                                                 Cancelar
+                                                             </button>
+                                                             <button
+                                                                 disabled={
+                                                                     isProcessingPayment ||
+                                                                     Math.abs(
+                                                                         Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                         ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                     ) >= 0.01 ||
+                                                                     ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
+                                                                     ((parseFloat(splitAmounts.Pendente) || 0) > 0 && !pendingDueDate) ||
+                                                                     ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
+                                                                     (needsManagerAuth && !isDiscountAuthorized)
+                                                                 }
+                                                                 onClick={handleProcessPayment}
+                                                                 className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
+                                                                     ${(
+                                                                         isProcessingPayment ||
+                                                                         Math.abs(
+                                                                             Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                             ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                         ) >= 0.01 ||
+                                                                         ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
+                                                                         ((parseFloat(splitAmounts.Pendente) || 0) > 0 && !pendingDueDate) ||
+                                                                         ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
+                                                                         (needsManagerAuth && !isDiscountAuthorized)
+                                                                     )
+                                                                         ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
+                                                                         : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
+                                                             >
+                                                                 {isProcessingPayment ? 'Processando...' : 'Finalizar e Emitir'}
+                                                             </button>
+                                                         </div>
+                                                    </div>
+                                                ) : (
+                                                    /* Single Payment Method Options Selection */
+                                                    <div className="space-y-6 animate-in fade-in duration-300">
+                                                        <div className="space-y-3">
+                                                            <label className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] block">Forma de Pagamento</label>
+                                                            <div className="grid grid-cols-2 gap-3">
+                                                                <PaymentMethodBtn method="PIX" icon="qr_code_2" label="Pix" activeColor="bg-emerald-500 text-white" borderColor="border-emerald-500/50" />
+                                                                <PaymentMethodBtn method="Dinheiro" icon="payments" label="Dinheiro" activeColor="bg-amber-500 text-white" borderColor="border-amber-500/50" />
+                                                                <PaymentMethodBtn method="Crédito" icon="credit_card" label="Cartão Crédito" activeColor="bg-indigo-500 text-white" borderColor="border-indigo-500/50" />
+                                                                <PaymentMethodBtn method="Débito" icon="credit_score" label="Cartão Débito" activeColor="bg-blue-500 text-white" borderColor="border-blue-500/50" />
+                                                                <div className="col-span-2">
+                                                                    <PaymentMethodBtn method="Pendente" icon="pending_actions" label="Pagar Depois (Pendente / Fiado)" activeColor="bg-rose-500 text-white" borderColor="border-rose-500/50" />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        <button
+                                                            onClick={() => setModalMode('none')}
+                                                            className="w-full py-5 rounded-2xl text-white/30 font-black uppercase tracking-widest text-xs border border-white/10 hover:bg-white/5 hover:text-white transition-all mt-4"
+                                                        >
+                                                            Cancelar Operação
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
                                         ) : (
                                             /* Confirmation Stage */

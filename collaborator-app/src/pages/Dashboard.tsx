@@ -133,7 +133,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     return (
         <div className="h-[100vh] w-full ref-body py-4 px-2 lg:px-6 overflow-y-auto selection:bg-[#d99f5b]/20 relative custom-scrollbar font-display">
             
-            <main className="max-w-[1200px] mx-auto flex flex-col gap-3 pb-32">
+            <main className="max-w-[1600px] mx-auto flex flex-col gap-3 pb-32">
                 
                 {/* 1. Header Navigation */}
                 <header className="flex flex-col md:flex-row justify-between items-center gap-4 mb-1 border border-white/40 bg-white/10 p-2 rounded-2xl shadow-sm backdrop-blur-sm z-20">
@@ -490,7 +490,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 </div>
 
                 {/* Bottom Main Navigation Plate (Footer equivalent) */}
-                <div className="fixed bottom-0 inset-x-0 mx-auto max-w-[1200px] pointer-events-none z-50 flex justify-center pb-4 px-4">
+                <div className="fixed bottom-0 inset-x-0 mx-auto max-w-[1600px] pointer-events-none z-50 flex justify-center pb-4 px-4">
                     <div className="ref-footer-plate h-14 w-full max-w-xl mx-auto rounded-full flex justify-between items-center px-6 relative pointer-events-auto border-t border-white/60 shadow-[0_10px_30px_rgba(40,20,10,0.5)]">
                          {[
                              { icon: 'calendar_month', active: true, screen: 'agenda' },

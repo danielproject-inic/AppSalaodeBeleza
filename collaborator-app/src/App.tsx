@@ -20,6 +20,7 @@ import UsersPermissions from './screens/UsersPermissions';
 import Onboarding from './screens/Onboarding';
 import CashPinSetup from './components/CashPinSetup';
 import ForcePasswordChange from './components/ForcePasswordChange';
+import CashReports from '../../components/CashReports';
 
 import { useCurrentTime } from './hooks/useCurrentTime';
 import { useSalonConfig } from './hooks/useSalonConfig';
@@ -170,6 +171,7 @@ const App = () => {
       case 'preferences': return hasAccess('settings_view') ? <SystemPreferences /> : <Unauthorized />;
       case 'notifications': return hasAccess('settings_view') ? <NotificationSettings /> : <Unauthorized />;
       case 'cashflow': return hasAccess('cashflow_view') ? <CashFlow /> : <Unauthorized />;
+      case 'reports': return hasAccess('settings_view') ? <CashReports /> : <Unauthorized />;
       case 'clients': return hasAccess('clients_view') ? <ClientList /> : <Unauthorized />;
       case 'commissions': return hasAccess('commissions_view') ? <SalonComissoesDashboard /> : <Unauthorized />;
       case 'agenda': return hasAccess('agenda_view') ? <DetailedAgenda /> : <Unauthorized />;
@@ -181,6 +183,7 @@ const App = () => {
   const allMenuItems = [
     { id: 'overview', icon: 'dashboard', label: 'Dashboard', module: 'dashboard_view' as ModuleKey },
     { id: 'cashflow', icon: 'point_of_sale', label: 'Caixa', module: 'cashflow_view' as ModuleKey },
+    { id: 'reports', icon: 'analytics', label: 'Relatórios', module: 'settings_view' as ModuleKey },
     { id: 'agenda', icon: 'calendar_month', label: 'Agenda', module: 'agenda_view' as ModuleKey },
     { id: 'clients', icon: 'group', label: 'Clientes', module: 'clients_view' as ModuleKey },
     { id: 'team', icon: 'badge', label: 'Colaboradores', module: 'team_navbar_view' as ModuleKey },
@@ -287,7 +290,7 @@ const App = () => {
             marginRight: 'var(--scrollbar-width, 0px)' 
           }}
         >
-          <div className="pointer-events-auto relative w-full max-w-[1180px]">
+          <div className="pointer-events-auto relative w-full max-w-[1600px]">
             <nav className="bg-[#1f2937]/90 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide w-full shadow-2xl">
                 {menuItems.map((item) => {
                   const isActive = currentScreen === item.id;

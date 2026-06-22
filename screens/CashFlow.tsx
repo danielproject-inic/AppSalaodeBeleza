@@ -11,6 +11,8 @@ import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
 import { supabase } from '../lib/supabase';
 import { useAdvanceRequests } from '../hooks/useAdvanceRequests';
 import { useCashSessions } from '../hooks/useCashSessions';
+import CashReports from '../components/CashReports';
+
 
 // --- Interfaces ---
 interface Transaction {
@@ -169,7 +171,7 @@ const CashFlow: React.FC = () => {
     const [serviceSearch, setServiceSearch] = useState('');
 
     const [quickReason, setQuickReason] = useState('');
-    const [activeTab, setActiveTab] = useState<'agendados' | 'recebimentos' | 'saidas' | 'contas' | 'pendentes' | 'historico'>('agendados');
+    const [activeTab, setActiveTab] = useState<'agendados' | 'recebimentos' | 'saidas' | 'contas' | 'pendentes' | 'historico' | 'relatorios'>('agendados');
     const [showPinEntry, setShowPinEntry] = useState(false);
 
     // Payment Finalization State
@@ -1154,7 +1156,10 @@ const CashFlow: React.FC = () => {
                             { id: 'saidas', label: 'SAÍDAS', icon: 'arrow_upward' },
                             { id: 'contas', label: 'CONTAS A PAGAR', icon: 'book' },
                             { id: 'pendentes', label: 'A RECEBER (FIADO)', icon: 'schedule' },
-                            ...(isAdmin ? [{ id: 'historico', label: 'HISTÓRICO', icon: 'history' }] : [])
+                            ...(isAdmin ? [
+                                { id: 'historico', label: 'HISTÓRICO', icon: 'history' },
+                                { id: 'relatorios', label: 'RELATÓRIOS', icon: 'analytics' }
+                            ] : [])
                         ].map(tab => (
                             <button
                                 key={tab.id}
@@ -1467,6 +1472,7 @@ const CashFlow: React.FC = () => {
                                 )}
                             </div>
                         )}
+                        {activeTab === 'relatorios' && <CashReports />}
                     </div>
                 </div>
 

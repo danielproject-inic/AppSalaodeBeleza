@@ -262,32 +262,24 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   const { start, end, isOpen } = getBusinessHoursForDate(wizardDate);
 
   if (!isOpen) {
-    setTimeError('O salão está fechado neste dia.');
-    setSelectedTimeSlot(null);
-    setEndTimePreview('');
-    return;
-   }
-   const [sh, sm] = dayCfg.start.split(':').map(Number);
-   const [eh, em] = dayCfg.end.split(':').map(Number);
-   const salonStart = sh * 60 + sm;
-   const salonEnd = eh * 60 + em;
+   setTimeError('O salão está fechado neste dia.');
+   setSelectedTimeSlot(null);
+   setEndTimePreview('');
+   return;
+  }
 
-   const lastStartLimit = (eh === 20 && em === 0) ? 19 * 60 + 59 : salonEnd;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const salonStart = sh * 60 + sm;
+  const salonEnd = eh * 60 + em;
 
-   if (startTimeInMinutes < salonStart || startTimeInMinutes > lastStartLimit) {
-    setTimeError(`Fora do horário do salão (${dayCfg.start} - ${eh === 20 && em === 0 ? '19:59' : dayCfg.end}).`);
-    setSelectedTimeSlot(null);
-    setEndTimePreview('');
-    return;
-   }
-  } else {
-   // Fallback if no config loaded yet or missing
-   if (startTimeInMinutes < 5 * 60 || startTimeInMinutes > 19 * 60 + 59) {
-    setTimeError('Horário fora do expediente para agendamentos (05:00 - 19:59).');
-    setSelectedTimeSlot(null);
-    setEndTimePreview('');
-    return;
-   }
+  const lastStartLimit = (eh === 20 && em === 0) ? 19 * 60 + 59 : salonEnd;
+
+  if (startTimeInMinutes < salonStart || startTimeInMinutes > lastStartLimit) {
+   setTimeError(`Fora do horário do salão (${start} - ${eh === 20 && em === 0 ? '19:59' : end}).`);
+   setSelectedTimeSlot(null);
+   setEndTimePreview('');
+   return;
   }
 
   // Check Exceptions

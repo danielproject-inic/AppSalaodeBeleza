@@ -620,7 +620,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
 
     return (
         <div className="w-full py-4 px-2 lg:px-8 selection:bg-[#b45309]/20 relative custom-scrollbar font-sans text-white">
-            <main className="max-w-[1180px] mx-auto flex flex-col gap-3 pb-20">
+            <main className="max-w-[1600px] mx-auto flex flex-col gap-3 pb-20">
 
                 <header className="flex flex-row justify-between items-center gap-2 bg-[#1f2937]/50 backdrop-blur-md border border-white/5 rounded-xl pr-2 pl-2 py-1 shadow-xl h-[56px] relative z-50">
                     <div className="flex items-center gap-1">

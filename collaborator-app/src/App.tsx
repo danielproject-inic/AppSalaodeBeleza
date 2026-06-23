@@ -20,7 +20,7 @@ import UsersPermissions from './screens/UsersPermissions';
 import Onboarding from './screens/Onboarding';
 import CashPinSetup from './components/CashPinSetup';
 import ForcePasswordChange from './components/ForcePasswordChange';
-import CashReports from '../../components/CashReports';
+import CashReports from './components/CashReports';
 
 import { useCurrentTime } from './hooks/useCurrentTime';
 import { useSalonConfig } from './hooks/useSalonConfig';

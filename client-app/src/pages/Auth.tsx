@@ -1,11 +1,9 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Mail, Lock, Phone, ArrowRight, Sparkles, Eye, EyeOff, X, ChevronRight } from 'lucide-react';
-import { useSalon } from '../contexts/SalonContext';
+import { User, Mail, Lock, Phone, ArrowRight, Eye, EyeOff, X, ChevronRight } from 'lucide-react';
 
-const Auth: React.FC = () => {
-    const { salonName } = useSalon();
+const Auth = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [loading, setLoading] = useState(false);
     const [email, setEmail] = useState('');
@@ -46,7 +44,7 @@ const Auth: React.FC = () => {
 
                 // Persistir email no localStorage após login de sucesso
                 const saved = localStorage.getItem('saved_emails_client');
-                let emailsList: string[] = saved ? JSON.parse(saved) : [];
+                const emailsList: string[] = saved ? JSON.parse(saved) : [];
                 if (!emailsList.includes(email.trim().toLowerCase())) {
                     emailsList.push(email.trim().toLowerCase());
                     localStorage.setItem('saved_emails_client', JSON.stringify(emailsList));
@@ -68,8 +66,9 @@ const Auth: React.FC = () => {
                     setMessage({ type: 'success', text: 'Registro realizado! Verifique seu e-mail.' });
                 }
             }
-        } catch (error: any) {
-            setMessage({ type: 'error', text: error.message || 'Ocorreu um erro.' });
+        } catch (error) {
+            const err = error as Error;
+            setMessage({ type: 'error', text: err.message || 'Ocorreu um erro.' });
         } finally {
             setLoading(false);
         }

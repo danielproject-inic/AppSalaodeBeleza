@@ -71,6 +71,8 @@ const CustomDateRangePicker = ({ startDate, endDate, onChange }: { startDate: st
                             <div className="flex gap-1 items-center">
                                 <select
                                     value={month}
+                                    title="Mês"
+                                    aria-label="Mês"
                                     onChange={e => setViewDate(new Date(year, parseInt(e.target.value), 1))}
                                     className="bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest px-1 py-1 rounded-lg outline-none cursor-pointer hover:bg-white/10 appearance-none text-center"
                                 >
@@ -80,6 +82,8 @@ const CustomDateRangePicker = ({ startDate, endDate, onChange }: { startDate: st
                                 </select>
                                 <select
                                     value={year}
+                                    title="Ano"
+                                    aria-label="Ano"
                                     onChange={e => setViewDate(new Date(parseInt(e.target.value), month, 1))}
                                     className="bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-widest px-1 py-1 rounded-lg outline-none cursor-pointer hover:bg-white/10 appearance-none text-center"
                                 >
@@ -984,6 +988,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                 <select
                                     className="bg-black/40 border border-white/10 text-[10px] font-bold text-white outline-none rounded-lg px-3 py-1.5 focus:border-[#b45309]/50 transition-all"
                                     value={historyProId}
+                                    title="Filtrar histórico por profissional"
+                                    aria-label="Filtrar histórico por profissional"
                                     onChange={(e) => setHistoryProId(e.target.value)}
                                 >
                                     <option value="all">TODOS</option>
@@ -998,6 +1004,8 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                     type="date"
                                     className="bg-black/40 border border-white/10 text-[10px] font-bold text-white outline-none rounded-lg px-3 py-1.5 focus:border-[#b45309]/50 transition-all [color-scheme:dark]"
                                     value={historyDate}
+                                    title="Filtrar histórico por data"
+                                    placeholder="Data do histórico"
                                     onChange={(e) => setHistoryDate(e.target.value)}
                                 />
                                 {(historyProId !== 'all' || historyDate !== '') && (

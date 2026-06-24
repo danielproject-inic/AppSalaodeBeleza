@@ -3,7 +3,7 @@ import { useCommissions } from '../hooks/useCommissions';
 import { useTransactions } from '../hooks/useTransactions';
 import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
 
-const CommissionsTransactions: React.FC = () => {
+const CommissionsTransactions = () => {
     const { role, professionalId, loading: userLoading } = useCurrentUserRef();
     const isAdmin = role === 'admin' || role === 'manager';
 
@@ -120,8 +120,9 @@ const CommissionsTransactions: React.FC = () => {
                 <select
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
-                    className={`bg-transparent border-none outline-none text-sm font-bold ${textClass} cursor-pointer appearance-none pr-6`}
-                    style={{ backgroundImage: 'none' }}
+                    title={label}
+                    aria-label={label}
+                    className={`bg-transparent bg-none border-none outline-none text-sm font-bold ${textClass} cursor-pointer appearance-none pr-6`}
                 >
                     <option value="Todos">Todos</option>
                     {options.map((opt: string) => (

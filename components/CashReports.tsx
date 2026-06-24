@@ -11,7 +11,7 @@ type Transaction = Database['public']['Tables']['transactions']['Row'] & {
     professional?: { name: string } | null;
 };
 
-const CashReports: React.FC = () => {
+const CashReports = () => {
     const getTodayDate = () => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -422,8 +422,11 @@ const CashReports: React.FC = () => {
                         <div className="flex flex-col gap-1.5 text-left">
                             <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Selecionar Dia</label>
                             <input
+                                id="diario-date"
                                 type="date"
                                 value={diarioDate}
+                                title="Selecionar Dia"
+                                placeholder="AAAA-MM-DD"
                                 onChange={(e) => setDiarioDate(e.target.value)}
                                 className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                             />
@@ -438,6 +441,8 @@ const CashReports: React.FC = () => {
                                 <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Mês</label>
                                 <select
                                     value={mensalMonth}
+                                    title="Mês"
+                                    aria-label="Mês"
                                     onChange={(e) => setMensalMonth(Number(e.target.value))}
                                     className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                 >
@@ -464,6 +469,8 @@ const CashReports: React.FC = () => {
                                 <input
                                     type="number"
                                     value={mensalYear}
+                                    title="Ano"
+                                    placeholder="AAAA"
                                     onChange={(e) => setMensalYear(Number(e.target.value))}
                                     className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                 />
@@ -477,6 +484,8 @@ const CashReports: React.FC = () => {
                                 <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Tipo Personalizado</label>
                                 <select
                                     value={personalizadoType}
+                                    title="Tipo Personalizado"
+                                    aria-label="Tipo Personalizado"
                                     onChange={(e) => setPersonalizadoType(e.target.value as any)}
                                     className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                 >
@@ -491,6 +500,8 @@ const CashReports: React.FC = () => {
                                     <input
                                         type="number"
                                         value={personalizadoYear}
+                                        title="Selecionar Ano"
+                                        placeholder="AAAA"
                                         onChange={(e) => setPersonalizadoYear(Number(e.target.value))}
                                         className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                     />
@@ -502,6 +513,8 @@ const CashReports: React.FC = () => {
                                         <input
                                             type="date"
                                             value={personalizadoStartDate}
+                                            title="De (Data Inicial)"
+                                            placeholder="AAAA-MM-DD"
                                             onChange={(e) => setPersonalizadoStartDate(e.target.value)}
                                             className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                         />
@@ -511,6 +524,8 @@ const CashReports: React.FC = () => {
                                         <input
                                             type="date"
                                             value={personalizadoEndDate}
+                                            title="Até (Data Final)"
+                                            placeholder="AAAA-MM-DD"
                                             onChange={(e) => setPersonalizadoEndDate(e.target.value)}
                                             className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                         />
@@ -724,7 +739,7 @@ const CashReports: React.FC = () => {
                                                                     </span>
                                                                 ) : null}
                                                             </div>
-                                                            <span className="material-symbols-outlined text-white/30 text-[18px] transition-transform duration-200" style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0)' }}>
+                                                            <span className={`material-symbols-outlined text-white/30 text-[18px] transition-transform duration-200 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}>
                                                                 expand_more
                                                             </span>
                                                         </div>

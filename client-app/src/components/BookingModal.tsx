@@ -16,77 +16,90 @@ interface BookingModalProps {
     clientId: string;
 }
 
+interface Professional {
+    id: string;
+    name: string;
+    avatar_url?: string | null;
+    functions?: string[];
+}
+
+interface Appointment {
+    start_time: string;
+    end_time: string;
+    status?: string;
+}
+
 const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId }) => {
     const [step, setStep] = useState(1);
-    const [professionals, setProfessionals] = useState<any[]>([]);
-    const [selectedProfessional, setSelectedProfessional] = useState<any>(null);
+    const [professionals, setProfessionals] = useState<Professional[]>([]);
+    const [selectedProfessional, setSelectedProfessional] = useState<Professional | null>(null);
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
     const [manualTime, setManualTime] = useState<string>('');
     const [timeError, setTimeError] = useState<string>('');
     const [endTimePreview, setEndTimePreview] = useState<string>('');
     const [loading, setLoading] = useState(false);
-    const [existingAppointments, setExistingAppointments] = useState<any[]>([]);
+    const [existingAppointments, setExistingAppointments] = useState<Appointment[]>([]);
     const [paymentMethod, setPaymentMethod] = useState<string>('local'); // 'local' or 'online'
 
     useEffect(() => {
+        const fetchProfessionals = async () => {
+            if (!service) return;
+            setLoading(true);
+            try {
+                const { data: profRefs, error: refError } = await supabase
+                    .from('service_professionals')
+                    .select('professional_id')
+                    .eq('service_id', service.id);
+
+                if (refError) throw refError;
+
+                const profIds = profRefs.map(r => r.professional_id);
+                const { data: profs, error: profError } = await supabase
+                    .from('professionals')
+                    .select('*')
+                    .in('id', profIds)
+                    .eq('status', 'Ativo');
+
+                if (profError) throw profError;
+                setProfessionals(profs || []);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
         if (service) {
             fetchProfessionals();
         }
     }, [service]);
 
     useEffect(() => {
+        const fetchExistingAppointments = async () => {
+            if (!selectedProfessional) return;
+            try {
+                const startOfDay = `${selectedDate}T00:00:00.000Z`;
+                const endOfDay = `${selectedDate}T23:59:59.999Z`;
+
+                const { data, error } = await supabase
+                    .from('appointments')
+                    .select('start_time, end_time, status')
+                    .eq('professional_id', selectedProfessional.id)
+                    .neq('status', 'cancelled')
+                    .gte('start_time', startOfDay)
+                    .lte('start_time', endOfDay);
+
+                if (error) throw error;
+                setExistingAppointments(data || []);
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
         if (selectedProfessional && selectedDate) {
             fetchExistingAppointments();
         }
     }, [selectedProfessional, selectedDate]);
-
-    const fetchProfessionals = async () => {
-        if (!service) return;
-        setLoading(true);
-        try {
-            const { data: profRefs, error: refError } = await supabase
-                .from('service_professionals')
-                .select('professional_id')
-                .eq('service_id', service.id);
-
-            if (refError) throw refError;
-
-            const profIds = profRefs.map(r => r.professional_id);
-            const { data: profs, error: profError } = await supabase
-                .from('professionals')
-                .select('*')
-                .in('id', profIds)
-                .eq('status', 'Ativo');
-
-            if (profError) throw profError;
-            setProfessionals(profs || []);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const fetchExistingAppointments = async () => {
-        if (!selectedProfessional) return;
-        try {
-            const startOfDay = `${selectedDate}T00:00:00.000Z`;
-            const endOfDay = `${selectedDate}T23:59:59.999Z`;
-
-            const { data, error } = await supabase
-                .from('appointments')
-                .select('start_time, end_time, status')
-                .eq('professional_id', selectedProfessional.id)
-                .neq('status', 'cancelled')
-                .gte('start_time', startOfDay)
-                .lte('start_time', endOfDay);
-
-            if (error) throw error;
-            setExistingAppointments(data || []);
-        } catch (err) {
-            console.error(err);
-        }
-    };
 
     const validateTime = (timeStr: string) => {
         setManualTime(timeStr);
@@ -271,13 +284,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                         <div className="flex items-center gap-2">
                                             <Calendar className="w-4 h-4 text-[#22d3ee]" />
                                             <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Selecionar Data</h3>
-                                        </div>
-                                        <input
+                                                                                <input
                                             type="date"
                                             value={selectedDate}
                                             title="Selecionar Data"
                                             placeholder="AAAA-MM-DD"
-                                            onChange={(e) => {
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                 setSelectedDate(e.target.value);
                                                 validateTime('');
                                             }}
@@ -285,7 +297,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                             className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white font-bold outline-none focus:ring-2 focus:ring-[#22d3ee]/50 transition-all"
                                         />
                                     </div>
-
+ 
                                     <div className="space-y-3">
                                         <div className="flex items-center gap-2">
                                             <Clock className="w-4 h-4 text-[#22d3ee]" />
@@ -296,7 +308,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                             value={manualTime}
                                             title="Horário de Início"
                                             placeholder="HH:MM"
-                                            onChange={(e) => validateTime(e.target.value)}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => validateTime(e.target.value)}
                                             className={`w-full bg-white/5 border rounded-2xl p-4 text-white font-black text-xl outline-none focus:ring-2 transition-all shadow-inner
                                                 ${timeError ? 'border-red-500/50 focus:ring-red-500/20 text-red-100' :
                                                     manualTime && !timeError ? 'border-emerald-500/50 focus:ring-emerald-500/20 text-emerald-100' :

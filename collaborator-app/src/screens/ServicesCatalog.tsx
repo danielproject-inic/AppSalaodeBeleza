@@ -276,6 +276,8 @@ const ServicesCatalog = () => {
                                  value={filterCollab}
                                  onChange={(e) => setFilterCollab(e.target.value)}
                                  className="appearance-none w-full bg-white/5 border border-white/10 rounded-[0.6rem] py-3 pl-14 pr-10 text-white font-black tracking-widest text-[9px] outline-none focus:border-amber-500/50 transition-all uppercase text-center cursor-pointer"
+                                 title="Filtrar por colaborador"
+                                 aria-label="Filtrar por colaborador"
                             >
                                  <option value="" className="bg-[#0f172a]">TODOS COLABORADORES</option>
                                  {professionals.map(p => (
@@ -332,12 +334,16 @@ const ServicesCatalog = () => {
                                     <button 
                                         onClick={() => handleEditService(s)}
                                         className="size-8 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 flex items-center justify-center text-white hover:bg-amber-500 hover:text-black transition-all shadow-xl"
+                                        title="Editar Serviço"
+                                        aria-label="Editar Serviço"
                                     >
                                         <Edit3 size={14} />
                                     </button>
                                     <button 
                                         onClick={() => setDeleteConfirmId(s.id)}
                                         className="size-8 bg-white/10 backdrop-blur-md rounded-lg border border-white/10 flex items-center justify-center text-white hover:bg-red-500 transition-all shadow-xl"
+                                        title="Excluir Serviço"
+                                        aria-label="Excluir Serviço"
                                     >
                                         <Trash2 size={14} />
                                     </button>
@@ -431,6 +437,8 @@ const ServicesCatalog = () => {
                     <button 
                         onClick={() => setIsPanelOpen(false)}
                         className="absolute top-8 right-8 size-10 border border-white/10 rounded-[0.5rem] flex items-center justify-center text-slate-600 hover:text-white transition-all hover:bg-white/5 hover:rotate-90 duration-500 group"
+                        title="Fechar Painel"
+                        aria-label="Fechar Painel"
                     >
                          <X size={20} className="transition-transform group-hover:scale-110" />
                     </button>
@@ -467,6 +475,8 @@ const ServicesCatalog = () => {
                                             <button 
                                                 onClick={() => setShowCategoryManager(true)}
                                                 className="size-5 bg-amber-500/10 border border-amber-500/20 rounded-md flex items-center justify-center text-amber-500 hover:bg-amber-500 hover:text-black transition-all mb-0.5"
+                                                title="Adicionar Categoria"
+                                                aria-label="Adicionar Categoria"
                                             >
                                                 <Plus size={12} />
                                             </button>
@@ -475,6 +485,8 @@ const ServicesCatalog = () => {
                                             value={svcCat}
                                             onChange={(e) => setSvcCat(e.target.value)}
                                             className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black uppercase text-md outline-none focus:border-amber-500 transition-all appearance-none cursor-pointer text-center"
+                                            title="Selecionar Categoria"
+                                            aria-label="Selecionar Categoria"
                                        >
                                             {categories.map(cat => (
                                                 <option key={cat} value={cat} className="bg-[#0f172a]">{cat.toUpperCase()}</option>
@@ -641,6 +653,8 @@ const ServicesCatalog = () => {
                                     setEditingCategory(null);
                                 }}
                                 className="size-8 border border-white/10 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-all hover:bg-white/5"
+                                title="Fechar Gerenciador"
+                                aria-label="Fechar Gerenciador"
                             >
                                 <X size={16} />
                             </button>
@@ -688,16 +702,22 @@ const ServicesCatalog = () => {
                                                     }}
                                                     className="flex-1 bg-white/5 border border-amber-500/30 rounded px-2 py-1 text-white font-bold text-xs uppercase outline-none"
                                                     autoFocus
+                                                    title="Nome da categoria"
+                                                    placeholder="Nome da categoria"
                                                 />
                                                 <button 
                                                     onClick={() => handleRenameCategory(cat, editCategoryName)}
                                                     className="size-7 bg-green-500/10 border border-green-500/20 text-green-500 rounded flex items-center justify-center hover:bg-green-500 hover:text-black transition-all"
+                                                    title="Confirmar renomeação"
+                                                    aria-label="Confirmar renomeação"
                                                 >
                                                     <Check size={12} />
                                                 </button>
                                                 <button 
                                                     onClick={() => setEditingCategory(null)}
                                                     className="size-7 bg-white/5 border border-white/10 text-slate-500 rounded flex items-center justify-center hover:text-white transition-all"
+                                                    title="Cancelar renomeação"
+                                                    aria-label="Cancelar renomeação"
                                                 >
                                                     <X size={12} />
                                                 </button>

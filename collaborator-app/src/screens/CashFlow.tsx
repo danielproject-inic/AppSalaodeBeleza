@@ -1024,6 +1024,8 @@ const CashFlow = () => {
                                         type="number"
                                         step="0.01"
                                         placeholder="0.00"
+                                        title="Valor Real Físico em Caixa"
+                                        aria-label="Valor Real Físico em Caixa"
                                         value={actualClosingBalanceInput}
                                         onChange={e => setActualClosingBalanceInput(e.target.value)}
                                         className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
@@ -1613,6 +1615,8 @@ const CashFlow = () => {
                                                                 <input
                                                                     type="text"
                                                                     placeholder="Digite para buscar o cliente..."
+                                                                    title="Buscar cliente"
+                                                                    aria-label="Buscar cliente"
                                                                     value={clientSearchQuery}
                                                                     onChange={e => setClientSearchQuery(e.target.value)}
                                                                     className="w-full bg-[#1e293b] border border-white/10 rounded-xl pl-10 pr-10 py-2 text-sm font-bold text-white placeholder:text-white/20 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
@@ -2154,6 +2158,8 @@ const CashFlow = () => {
                                                                     type="number"
                                                                     step="0.01"
                                                                     placeholder="0.00"
+                                                                    title="Valor recebido em dinheiro"
+                                                                    aria-label="Valor recebido em dinheiro"
                                                                     value={cashReceived}
                                                                     onChange={e => setCashReceived(e.target.value)}
                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"

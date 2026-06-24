@@ -837,6 +837,8 @@ const SalonComissoesDashboard = () => {
               {selectedPeriod === 'Diário' && (
                 <select
                   value={selectedDay}
+                  title="Dia"
+                  aria-label="Selecionar Dia"
                   onChange={e => setSelectedDay(Number(e.target.value))}
                   className="bg-black/60 border border-white/10 text-white text-[8px] px-2 py-1 outline-none font-bold uppercase tracking-wider"
                 >
@@ -848,6 +850,8 @@ const SalonComissoesDashboard = () => {
               {(selectedPeriod === 'Diário' || selectedPeriod === 'Mensal') && (
                 <select
                   value={selectedMonth}
+                  title="Mês"
+                  aria-label="Selecionar Mês"
                   onChange={e => setSelectedMonth(Number(e.target.value))}
                   className="bg-black/60 border border-white/10 text-white text-[8px] px-2 py-1 outline-none font-bold uppercase tracking-wider"
                 >
@@ -858,6 +862,8 @@ const SalonComissoesDashboard = () => {
               )}
               <select
                 value={selectedYear}
+                title="Ano"
+                aria-label="Selecionar Ano"
                 onChange={e => setSelectedYear(Number(e.target.value))}
                 className="bg-black/60 border border-white/10 text-white text-[8px] px-2 py-1 outline-none font-bold uppercase tracking-wider"
               >
@@ -987,6 +993,8 @@ const SalonComissoesDashboard = () => {
               </div>
               <select
                 value={loteProFilter}
+                title="Filtrar por colaborador"
+                aria-label="Filtrar por colaborador"
                 onChange={(e) => setLoteProFilter(e.target.value)}
                 className="bg-black/50 border border-white/10 text-white text-[10px] px-2 py-1 outline-none font-bold"
               >
@@ -1028,6 +1036,8 @@ const SalonComissoesDashboard = () => {
                               else setCheckedBatchIds(prev => prev.filter(id => id !== lote.id));
                             }}
                             className="accent-amber-700 w-3.5 h-3.5 cursor-pointer"
+                            title="Selecionar lote"
+                            aria-label="Selecionar lote"
                           />
                         </td>
                         <td className="px-3 py-3 pl-1">
@@ -1289,6 +1299,8 @@ const SalonComissoesDashboard = () => {
                 <select
                   className="bg-black/40 border border-white/10 text-[10px] text-white outline-none rounded-sm px-2 py-1"
                   value={historyProId}
+                  title="Filtrar por Colaborador"
+                  aria-label="Filtrar por Colaborador"
                   onChange={(e) => setHistoryProId(e.target.value)}
                 >
                   <option value="all">TODOS</option>
@@ -1303,6 +1315,8 @@ const SalonComissoesDashboard = () => {
                   type="date"
                   className="bg-black/40 border border-white/10 text-[10px] text-white outline-none rounded-sm px-2 py-1 [color-scheme:dark]"
                   value={historyDate}
+                  title="Filtrar por data"
+                  placeholder="Data de comissão"
                   onChange={(e) => setHistoryDate(e.target.value)}
                 />
                 {(historyProId !== 'all' || historyDate !== '') && (

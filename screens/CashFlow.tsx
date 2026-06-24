@@ -964,6 +964,8 @@ const CashFlow: React.FC = () => {
                                     pattern="[0-9]*"
                                     maxLength={4}
                                     value={pinInput}
+                                    title="PIN de Acesso"
+                                    placeholder="****"
                                     onChange={e => handlePinChange(e.target.value)}
                                     autoFocus
                                     className="opacity-0 absolute inset-0 cursor-default"
@@ -1020,6 +1022,8 @@ const CashFlow: React.FC = () => {
                                         type="number"
                                         step="0.01"
                                         placeholder="0.00"
+                                        title="Valor Real Físico em Caixa"
+                                        aria-label="Valor Real Físico em Caixa"
                                         value={actualClosingBalanceInput}
                                         onChange={e => setActualClosingBalanceInput(e.target.value)}
                                         className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
@@ -1092,6 +1096,8 @@ const CashFlow: React.FC = () => {
                             <input
                                 type="date"
                                 value={selectedDate}
+                                title="Data Selecionada"
+                                placeholder="AAAA-MM-DD"
                                 disabled={isSessionFromPreviousDay}
                                 onChange={(e) => setSelectedDate(e.target.value)}
                                 className={`bg-transparent border-none text-xs font-bold text-slate-700 outline-none
@@ -1607,6 +1613,8 @@ const CashFlow: React.FC = () => {
                                                                 <input
                                                                     type="text"
                                                                     placeholder="Digite para buscar o cliente..."
+                                                                    title="Buscar cliente"
+                                                                    aria-label="Buscar cliente"
                                                                     value={clientSearchQuery}
                                                                     onChange={e => setClientSearchQuery(e.target.value)}
                                                                     className="w-full bg-[#1e293b] border border-white/10 rounded-xl pl-10 pr-10 py-2 text-sm font-bold text-white placeholder:text-white/20 outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
@@ -1707,6 +1715,9 @@ const CashFlow: React.FC = () => {
                                                                     min="0"
                                                                     step="0.01"
                                                                     value={item.price || ''}
+                                                                    title="Preço do Serviço"
+                                                                    placeholder="0.00"
+                                                                    aria-label="Preço do Serviço"
                                                                     onChange={e => handleUpdateItemPrice(idx, parseFloat(e.target.value) || 0)}
                                                                     className="w-24 bg-[#1e293b] border border-white/10 rounded-xl px-2.5 py-1 text-right font-mono font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
                                                                 />
@@ -1787,6 +1798,8 @@ const CashFlow: React.FC = () => {
                                                                          type="number"
                                                                          step="0.01"
                                                                          placeholder="0.00"
+                                                                         title="Valor no Pix"
+                                                                         aria-label="Valor no Pix"
                                                                          value={splitAmounts.PIX}
                                                                          onChange={e => setSplitAmounts(prev => ({ ...prev, PIX: e.target.value }))}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1803,6 +1816,8 @@ const CashFlow: React.FC = () => {
                                                                          type="number"
                                                                          step="0.01"
                                                                          placeholder="0.00"
+                                                                         title="Valor em Dinheiro"
+                                                                         aria-label="Valor em Dinheiro"
                                                                          value={splitAmounts.Dinheiro}
                                                                          onChange={e => setSplitAmounts(prev => ({ ...prev, Dinheiro: e.target.value }))}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1819,6 +1834,8 @@ const CashFlow: React.FC = () => {
                                                                          type="number"
                                                                          step="0.01"
                                                                          placeholder="0.00"
+                                                                         title="Valor no Cartão de Crédito"
+                                                                         aria-label="Valor no Cartão de Crédito"
                                                                          value={splitAmounts.Crédito}
                                                                          onChange={e => setSplitAmounts(prev => ({ ...prev, Crédito: e.target.value }))}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1835,6 +1852,8 @@ const CashFlow: React.FC = () => {
                                                                          type="number"
                                                                          step="0.01"
                                                                          placeholder="0.00"
+                                                                         title="Valor no Cartão de Débito"
+                                                                         aria-label="Valor no Cartão de Débito"
                                                                          value={splitAmounts.Débito}
                                                                          onChange={e => setSplitAmounts(prev => ({ ...prev, Débito: e.target.value }))}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1851,6 +1870,8 @@ const CashFlow: React.FC = () => {
                                                                          type="number"
                                                                          step="0.01"
                                                                          placeholder="0.00"
+                                                                         title="Valor Pendente"
+                                                                         aria-label="Valor Pendente"
                                                                          value={splitAmounts.Pendente}
                                                                          onChange={e => setSplitAmounts(prev => ({ ...prev, Pendente: e.target.value }))}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1869,6 +1890,8 @@ const CashFlow: React.FC = () => {
                                                                          type="number"
                                                                          step="0.01"
                                                                          placeholder="0.00"
+                                                                         title="Valor recebido em dinheiro"
+                                                                         aria-label="Valor recebido em dinheiro"
                                                                          value={cashReceived}
                                                                          onChange={e => setCashReceived(e.target.value)}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1891,6 +1914,9 @@ const CashFlow: React.FC = () => {
                                                                      <input
                                                                          type="date"
                                                                          value={pendingDueDate}
+                                                                         title="Data Prometida para o Pagamento"
+                                                                         placeholder="AAAA-MM-DD"
+                                                                         aria-label="Data Prometida para o Pagamento"
                                                                          onChange={e => setPendingDueDate(e.target.value)}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
                                                                          required
@@ -1907,6 +1933,8 @@ const CashFlow: React.FC = () => {
                                                                  <input
                                                                      type="number"
                                                                      placeholder="0"
+                                                                     title="Desconto em porcentagem"
+                                                                     aria-label="Desconto em porcentagem"
                                                                      value={paymentDiscountPercent}
                                                                      onChange={e => setPaymentDiscountPercent(e.target.value)}
                                                                      className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -1931,6 +1959,8 @@ const CashFlow: React.FC = () => {
                                                                          <input
                                                                              type="email"
                                                                              placeholder="E-mail do Gerente"
+                                                                             title="E-mail do Gerente"
+                                                                             aria-label="E-mail do Gerente"
                                                                              value={managerEmail}
                                                                              onChange={e => setManagerEmail(e.target.value)}
                                                                              className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
@@ -1938,6 +1968,8 @@ const CashFlow: React.FC = () => {
                                                                          <input
                                                                              type="password"
                                                                              placeholder="Senha do Gerente"
+                                                                             title="PIN do Gerente"
+                                                                             aria-label="PIN do Gerente"
                                                                              value={managerPassword}
                                                                              onChange={e => setManagerPassword(e.target.value)}
                                                                              className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
@@ -2084,6 +2116,8 @@ const CashFlow: React.FC = () => {
                                                                 <input
                                                                     type="number"
                                                                     placeholder="0"
+                                                                    title="Desconto em porcentagem"
+                                                                    aria-label="Desconto em porcentagem"
                                                                     value={paymentDiscountPercent}
                                                                     onChange={e => setPaymentDiscountPercent(e.target.value)}
                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -2108,6 +2142,8 @@ const CashFlow: React.FC = () => {
                                                                     <input
                                                                         type="email"
                                                                         placeholder="E-mail do Gerente"
+                                                                        title="E-mail do Gerente"
+                                                                        aria-label="E-mail do Gerente"
                                                                         value={managerEmail}
                                                                         onChange={e => setManagerEmail(e.target.value)}
                                                                         className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
@@ -2115,6 +2151,8 @@ const CashFlow: React.FC = () => {
                                                                     <input
                                                                         type="password"
                                                                         placeholder="Senha do Gerente"
+                                                                        title="PIN do Gerente"
+                                                                        aria-label="PIN do Gerente"
                                                                         value={managerPassword}
                                                                         onChange={e => setManagerPassword(e.target.value)}
                                                                         className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
@@ -2144,6 +2182,8 @@ const CashFlow: React.FC = () => {
                                                                     type="number"
                                                                     step="0.01"
                                                                     placeholder="0.00"
+                                                                    title="Valor recebido em dinheiro"
+                                                                    aria-label="Valor recebido em dinheiro"
                                                                     value={cashReceived}
                                                                     onChange={e => setCashReceived(e.target.value)}
                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
@@ -2161,6 +2201,9 @@ const CashFlow: React.FC = () => {
                                                                 <input
                                                                     type="date"
                                                                     value={pendingDueDate}
+                                                                    title="Data Prometida para o Pagamento"
+                                                                    placeholder="AAAA-MM-DD"
+                                                                    aria-label="Data Prometida para o Pagamento"
                                                                     onChange={e => setPendingDueDate(e.target.value)}
                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
                                                                     required
@@ -2253,6 +2296,8 @@ const CashFlow: React.FC = () => {
                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">1. Escolha o Profissional</label>
                                                 <select
                                                     value={tempSelPro}
+                                                    title="Selecione o Profissional"
+                                                    aria-label="Selecione o Profissional"
                                                     onChange={e => { setTempSelPro(e.target.value); setTempSelService(null); }}
                                                     className="w-full bg-[#111827]/40 border border-white/5 rounded-2xl px-5 py-3 text-lg font-bold text-white outline-none focus:border-cyan-500/30 shadow-none transition-all cursor-pointer"
                                                 >

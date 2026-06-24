@@ -563,6 +563,8 @@ const ClientList: React.FC = () => {
                                         accept="image/*"
                                         onChange={handleAvatarChange}
                                         className="hidden"
+                                        title="Upload de foto de perfil"
+                                        aria-label="Upload de foto de perfil"
                                     />
                                 </div>
                             </div>
@@ -659,6 +661,8 @@ const ClientList: React.FC = () => {
                                                 value={newClient.nascimento}
                                                 onChange={handleInputChange}
                                                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-white/10 bg-[#1e293b] text-white focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 outline-none transition-all"
+                                                title="Data de Nascimento"
+                                                placeholder="Data de Nascimento"
                                             />
                                         </div>
                                     </div>
@@ -1269,6 +1273,8 @@ const ClientList: React.FC = () => {
                                                             value={historyFilterDate}
                                                             onChange={(e) => setHistoryFilterDate(e.target.value)}
                                                             className="text-[10px] font-bold text-white/60 focus:outline-none bg-transparent"
+                                                            title="Filtrar por data"
+                                                            placeholder="Data de filtro"
                                                         />
                                                     </div>
 
@@ -1281,6 +1287,8 @@ const ClientList: React.FC = () => {
                                                                 onChange={(e) => setHistoryFilterPro(e.target.value)}
                                                                 disabled={userRole === 'professional'}
                                                                 className={`text-[10px] font-bold text-white/60 focus:outline-none bg-transparent appearance-none ${userRole === 'professional' ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                                                title="Filtrar por colaborador"
+                                                                aria-label="Filtrar por colaborador"
                                                             >
                                                                 <option value="">{userRole === 'professional' ? professionals.find(p => p.id === loggedProId)?.name : 'Colaborador: Todos'}</option>
                                                                 {userRole !== 'professional' && professionals.map(p => (

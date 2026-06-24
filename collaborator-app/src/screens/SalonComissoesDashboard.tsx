@@ -693,6 +693,8 @@ return (
             {selectedPeriod === 'Diário' && (
               <select
                 value={selectedDay}
+                title="Selecione o Dia"
+                aria-label="Selecione o Dia"
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedDay(Number(e.target.value))}
                 className="bg-black/60 border border-white/10 text-white text-[8px] px-2 py-1 outline-none font-bold uppercase tracking-wider"
               >
@@ -704,6 +706,8 @@ return (
             {(selectedPeriod === 'Diário' || selectedPeriod === 'Mensal') && (
               <select
                 value={selectedMonth}
+                title="Selecione o Mês"
+                aria-label="Selecione o Mês"
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedMonth(Number(e.target.value))}
                 className="bg-black/60 border border-white/10 text-white text-[8px] px-2 py-1 outline-none font-bold uppercase tracking-wider"
               >
@@ -714,6 +718,8 @@ return (
             )}
             <select
               value={selectedYear}
+              title="Selecione o Ano"
+              aria-label="Selecione o Ano"
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedYear(Number(e.target.value))}
               className="bg-black/60 border border-white/10 text-white text-[8px] px-2 py-1 outline-none font-bold uppercase tracking-wider"
             >
@@ -844,6 +850,8 @@ return (
             {canViewAll && (
               <select
                 value={loteProFilter}
+                title="Filtrar por Colaborador"
+                aria-label="Filtrar por Colaborador"
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setLoteProFilter(e.target.value)}
                 className="bg-black/50 border border-white/10 text-white text-[10px] px-2 py-1 outline-none font-bold"
               >
@@ -880,6 +888,8 @@ return (
                         <input
                           type="checkbox"
                           checked={checkedBatchIds.includes(lote.id)}
+                          title="Selecionar Lote"
+                          aria-label="Selecionar Lote"
                           onClick={(e: React.MouseEvent) => e.stopPropagation()}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             if (e.target.checked) setCheckedBatchIds(prev => [...prev, lote.id]);
@@ -1014,6 +1024,8 @@ return (
                 <select
                   className="bg-black/40 border border-white/10 text-[10px] text-white outline-none rounded-sm px-2 py-1"
                   value={historyProId}
+                  title="Filtrar por Colaborador"
+                  aria-label="Filtrar por Colaborador"
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setHistoryProId(e.target.value)}
                 >
                   <option value="all">TODOS</option>
@@ -1029,6 +1041,8 @@ return (
                 type="date"
                 className="bg-black/40 border border-white/10 text-[10px] text-white outline-none rounded-sm px-2 py-1"
                 value={historyDate}
+                title="Filtrar por Data"
+                placeholder="AAAA-MM-DD"
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHistoryDate(e.target.value)}
               />
               {(historyProId !== 'all' || historyDate !== '') && (

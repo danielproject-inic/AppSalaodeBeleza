@@ -155,6 +155,8 @@ const Auth: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => setShowDropdown(!showDropdown)}
+                                    title="Mostrar e-mails salvos"
+                                    aria-label="Mostrar e-mails salvos"
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-amber-600 transition-colors focus:outline-none flex items-center justify-center"
                                 >
                                     <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${showDropdown ? 'rotate-90 text-amber-600' : ''}`} />
@@ -186,6 +188,8 @@ const Auth: React.FC = () => {
                                                             setShowDropdown(false);
                                                         }
                                                     }}
+                                                    title="Remover e-mail"
+                                                    aria-label="Remover e-mail"
                                                     className="text-stone-300 hover:text-red-500 p-1 flex items-center justify-center transition-colors"
                                                 >
                                                     <X className="w-3.5 h-3.5" />

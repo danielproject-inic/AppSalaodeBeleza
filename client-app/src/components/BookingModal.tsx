@@ -194,7 +194,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                             <p className="text-base font-bold text-white truncate max-w-[200px]">{service.title}</p>
                         </div>
                     </div>
-                    <button onClick={onClose} className="p-2.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 group">
+                    <button onClick={onClose} title="Fechar" aria-label="Fechar" className="p-2.5 hover:bg-white/10 rounded-xl transition-all active:scale-90 group">
                         <X className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors" />
                     </button>
                 </div>
@@ -275,6 +275,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                         <input
                                             type="date"
                                             value={selectedDate}
+                                            title="Selecionar Data"
+                                            placeholder="AAAA-MM-DD"
                                             onChange={(e) => {
                                                 setSelectedDate(e.target.value);
                                                 validateTime('');
@@ -292,6 +294,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, clientId 
                                         <input
                                             type="time"
                                             value={manualTime}
+                                            title="Horário de Início"
+                                            placeholder="HH:MM"
                                             onChange={(e) => validateTime(e.target.value)}
                                             className={`w-full bg-white/5 border rounded-2xl p-4 text-white font-black text-xl outline-none focus:ring-2 transition-all shadow-inner
                                                 ${timeError ? 'border-red-500/50 focus:ring-red-500/20 text-red-100' :

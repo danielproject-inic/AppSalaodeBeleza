@@ -7,7 +7,7 @@ interface AuthProps {
     onAuthSuccess: () => void;
 }
 
-const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
+const Auth = ({ onAuthSuccess }: AuthProps) => {
     const { salonName } = useSalon();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

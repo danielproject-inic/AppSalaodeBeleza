@@ -870,13 +870,15 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
     <div className="grid grid-cols-2 gap-4">
      <div>
       <label className="block text-xs font-bold text-slate-400 mb-1">Data</label>
-       <input type="date" value={wizardDate || ''} onChange={(e) => setWizardDate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 focus:ring-cyan-500 text-white" />
+       <input type="date" value={wizardDate || ''} title="Data do Agendamento" placeholder="AAAA-MM-DD" onChange={(e) => setWizardDate(e.target.value)} className="w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 focus:ring-cyan-500 text-white" />
      </div>
      <div>
       <label className="block text-xs font-bold text-slate-400 mb-1">Horário</label>
       <input 
         type="time" 
         value={manualTime} 
+        title="Horário do Agendamento"
+        placeholder="HH:MM"
         onChange={(e) => setManualTime(e.target.value)} 
         disabled={!!timeError && (timeError.includes('fechado') || timeError.includes('passados'))}
         className={`w-full px-4 py-3 rounded-xl border border-white/10 bg-white/5 focus:ring-cyan-500 text-white transition-all ${(timeError.includes('fechado') || timeError.includes('passados')) ? 'opacity-50 cursor-not-allowed grayscale' : ''}`} 

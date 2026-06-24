@@ -966,6 +966,8 @@ const CashFlow = () => {
                                     pattern="[0-9]*"
                                     maxLength={4}
                                     value={pinInput}
+                                    title="PIN de Acesso"
+                                    placeholder="****"
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => handlePinChange(e.target.value)}
                                     autoFocus
                                     className="opacity-0 absolute inset-0 cursor-default"
@@ -1094,6 +1096,8 @@ const CashFlow = () => {
                             <input
                                 type="date"
                                 value={selectedDate}
+                                title="Data Selecionada"
+                                placeholder="AAAA-MM-DD"
                                 disabled={isSessionFromPreviousDay}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSelectedDate(e.target.value)}
                                 className={`bg-transparent border-none text-xs font-bold text-slate-700 outline-none
@@ -1709,6 +1713,8 @@ const CashFlow = () => {
                                                                     min="0"
                                                                     step="0.01"
                                                                     value={item.price || ''}
+                                                                    title="Preço do Serviço"
+                                                                    placeholder="0.00"
                                                                     onChange={e => handleUpdateItemPrice(idx, parseFloat(e.target.value) || 0)}
                                                                     className="w-24 bg-[#1e293b] border border-white/10 rounded-xl px-2.5 py-1 text-right font-mono font-bold text-white outline-none focus:border-cyan-500/50 focus:ring-2 focus:ring-cyan-500/10 transition-all"
                                                                 />
@@ -1893,6 +1899,8 @@ const CashFlow = () => {
                                                                      <input
                                                                          type="date"
                                                                          value={pendingDueDate}
+                                                                         title="Data Prometida para o Pagamento"
+                                                                         placeholder="AAAA-MM-DD"
                                                                          onChange={e => setPendingDueDate(e.target.value)}
                                                                          className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
                                                                          required
@@ -2163,6 +2171,8 @@ const CashFlow = () => {
                                                                 <input
                                                                     type="date"
                                                                     value={pendingDueDate}
+                                                                    title="Data Prometida para o Pagamento"
+                                                                    placeholder="AAAA-MM-DD"
                                                                     onChange={e => setPendingDueDate(e.target.value)}
                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
                                                                     required
@@ -2255,6 +2265,8 @@ const CashFlow = () => {
                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">1. Escolha o Profissional</label>
                                                 <select
                                                     value={tempSelPro}
+                                                    title="Selecione o Profissional"
+                                                    aria-label="Selecione o Profissional"
                                                     onChange={e => { setTempSelPro(e.target.value); setTempSelService(null); }}
                                                     className="w-full bg-[#111827]/40 border border-white/5 rounded-2xl px-5 py-3 text-lg font-bold text-white outline-none focus:border-cyan-500/30 shadow-none transition-all cursor-pointer"
                                                 >

@@ -541,7 +541,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                         <span className="material-symbols-outlined text-amber-500 text-3xl">{isEditing ? 'edit' : 'person_add'}</span>
                                     </div>
                                     <div>
-                                        <h3 className="text-4xl font-black text-white tracking-tight uppercase" style={{fontFamily:'Bebas Neue'}}>{isEditing ? 'Editar Colaborador' : 'Novo Colaborador'}</h3>
+                                        <h3 className="text-4xl font-black text-white tracking-tight uppercase font-bebas">{isEditing ? 'Editar Colaborador' : 'Novo Colaborador'}</h3>
                                         <p className="text-[10px] text-white/30 font-black uppercase tracking-widest mt-0.5">{isEditing ? 'Atualize os dados do membro da equipe' : 'Adicione um novo membro à equipe'}</p>
                                     </div>
                                 </div>

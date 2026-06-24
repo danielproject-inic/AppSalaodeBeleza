@@ -139,7 +139,7 @@ const CashFlow: React.FC = () => {
         }
     }, [activeSession, sessionsLoading]);
 
-    const operador = activeSession ? (activeSession.opened_by_profile as any)?.full_name || 'Operador' : '';
+    const operador = activeSession ? (activeSession as any).opened_by_profile?.full_name || 'Operador' : '';
     const valorInicial = activeSession ? activeSession.opening_balance.toString() : '0';
 
     const [valorInicialInput, setValorInicialInput] = useState('0');
@@ -1038,6 +1038,8 @@ const CashFlow: React.FC = () => {
                                     value={closureObservations}
                                     onChange={e => setClosureObservations(e.target.value)}
                                     placeholder="Ex: Esqueci de fechar ontem. Saldo confere..."
+                                    title="Notas de Encerramento"
+                                    aria-label="Notas de Encerramento"
                                     className="w-full bg-[#111827]/40 border border-white/5 rounded-2xl p-5 text-sm text-white/80 outline-none focus:border-cyan-500/30 transition-all min-h-[100px] resize-none"
                                 />
                             </div>
@@ -1401,8 +1403,8 @@ const CashFlow: React.FC = () => {
                                                             return (
                                                                 <button
                                                                     onClick={() => {
-                                                                        const operatorName = (session.opened_by_profile as any)?.full_name || 'Operador';
-                                                                        const phone = (session.opened_by_profile as any)?.phone ? (session.opened_by_profile as any).phone.replace(/\D/g, '') : '';
+                                                                        const operatorName = (session as any).opened_by_profile?.full_name || 'Operador';
+                                                                        const phone = (session as any).opened_by_profile?.phone ? (session as any).opened_by_profile.phone.replace(/\D/g, '') : '';
                                                                         
                                                                         const sessionDateFormatted = openedAt.toLocaleDateString('pt-BR');
                                                                         const message = `Olá, ${operatorName}! Consta em nosso sistema que o caixa do dia ${sessionDateFormatted} ainda está em aberto. Por favor, realize o fechamento no aplicativo o quanto antes.\n\nAtenciosamente, Salon Suite Pro`;
@@ -1438,8 +1440,8 @@ const CashFlow: React.FC = () => {
                                                     <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block">Operador</span>
                                                     <span className="text-xs font-bold text-white">
                                                         {session.status === 'open' 
-                                                            ? (session.opened_by_profile as any)?.full_name 
-                                                            : (session.closed_by_profile as any)?.full_name || (session.opened_by_profile as any)?.full_name || 'Operador'}
+                                                            ? (session as any).opened_by_profile?.full_name 
+                                                            : (session as any).closed_by_profile?.full_name || (session as any).opened_by_profile?.full_name || 'Operador'}
                                                     </span>
                                                 </div>
                                                 <div>
@@ -2059,7 +2061,7 @@ const CashFlow: React.FC = () => {
                                                                              ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
                                                                          ) >= 0.01 ||
                                                                          ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
-                                                                         ((parseFloat(splitAmounts.Pendente) || 0) > 0 && !pendingDueDate) ||
+                                                                         ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!pendingDueDate)) ||
                                                                          ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
                                                                          (needsManagerAuth && !isDiscountAuthorized)
                                                                      )
@@ -2218,6 +2220,8 @@ const CashFlow: React.FC = () => {
                                                             value={paymentObservation}
                                                             onChange={e => setPaymentObservation(e.target.value)}
                                                             placeholder="Detalhes adicionais da transação..."
+                                                            title="Observações Internas"
+                                                            aria-label="Observações Internas"
                                                             className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-sm text-white/80 outline-none focus:border-cyan-500/30 min-h-[70px] resize-none transition-all"
                                                         />
                                                     </div>
@@ -2378,6 +2382,8 @@ const CashFlow: React.FC = () => {
                                                         type="text"
                                                         readOnly
                                                         value={profile?.full_name || operador}
+                                                        title="Operador Responsável"
+                                                        placeholder="Operador Responsável"
                                                         className="bg-transparent text-white outline-none w-full font-bold focus:ring-0"
                                                     />
                                                 </div>
@@ -2392,8 +2398,11 @@ const CashFlow: React.FC = () => {
                                                         step="0.01"
                                                         placeholder="0.00"
                                                         value={valorInicialInput}
+                                                        title="Fundo de Reserva (Saldo Inicial)"
+                                                        aria-label="Fundo de Reserva (Saldo Inicial)"
                                                         onChange={e => setValorInicialInput(e.target.value)}
                                                         className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
+                                                        required
                                                     />
                                                 </div>
                                             </div>
@@ -2685,6 +2694,8 @@ const CashFlow: React.FC = () => {
                                                         type="number"
                                                         step="0.01"
                                                         placeholder="0.00"
+                                                        title="Valor Real Físico em Caixa"
+                                                        aria-label="Valor Real Físico em Caixa"
                                                         value={actualClosingBalanceInput}
                                                         onChange={e => setActualClosingBalanceInput(e.target.value)}
                                                         className="bg-transparent text-white outline-none w-full font-mono text-2xl font-black focus:ring-0"
@@ -2699,6 +2710,8 @@ const CashFlow: React.FC = () => {
                                                     value={closureObservations}
                                                     onChange={e => setClosureObservations(e.target.value)}
                                                     placeholder="Relate quebras de caixa, observações ou lembretes..."
+                                                    title="Notas de Encerramento"
+                                                    aria-label="Notas de Encerramento"
                                                     className="w-full bg-[#111827]/40 border border-white/5 rounded-2xl p-5 text-sm text-white/80 outline-none focus:border-cyan-500/30 transition-all min-h-[120px] resize-none"
                                                 />
                                             </div>

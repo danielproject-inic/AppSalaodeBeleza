@@ -35,7 +35,7 @@ const StaffSchedule: React.FC<StaffScheduleProps> = ({ persistedExceptions = {},
             {/* BACKGROUND AMBIENCE */}
             <div className="fixed inset-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] rounded-full bg-[#0f172a]/5 blur-[120px] animate-pulse"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-slate-500/5 blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+                <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full bg-slate-500/5 blur-[120px] animate-pulse animate-delay-2s"></div>
             </div>
 
             {/* Header */}

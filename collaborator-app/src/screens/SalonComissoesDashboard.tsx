@@ -674,7 +674,7 @@ return (
 
       {/* FILTER BAR */}
       <div className="panel" id="p-filters">
-        <div className="panel-header" style={{ borderBottom: 'none', justifyContent: 'flex-start' }}>
+        <div className="panel-header panel-header--no-border">
           <div className="flex items-center gap-2">
             <div className="flex bg-black/40 rounded-sm p-0.5 border border-white/5">
               <button
@@ -759,10 +759,10 @@ return (
           </div>
         </div>
         <div className="panel-body">
-          <div className="kpi-label" style={{ color: "rgba(255,20,147,.7)" }}>Total a Liquidar</div>
+          <div className="kpi-label kpi-label--pink">Total a Liquidar</div>
           <div className="kpi-val pink-val">
             <strong>{formatBRLSplit(totalCommissions)[0]}</strong>
-            <span className="cents" style={{ opacity: .5 }}>,{formatBRLSplit(totalCommissions)[1]}</span>
+            <span className="cents cents--dim">,{formatBRLSplit(totalCommissions)[1]}</span>
           </div>
           <div className="kpi-sub">Saldo acumulado pendente</div>
         </div>
@@ -772,18 +772,18 @@ return (
       {/* PANEL: NET VALUE */}
       <div className="panel" id="p-liquid">
         <div className="panel-header">
-          <div className="panel-title"><span className="dot" style={{ background: "var(--cyan)" }}></span>Valor Líquido do Salão</div>
+          <div className="panel-title"><span className="dot dot--cyan"></span>Valor Líquido do Salão</div>
           <div className="panel-controls">
             <button className="ctrl-btn ctrl-min">—</button>
           </div>
         </div>
         <div className="panel-body">
           <div className="flex justify-between items-start gap-3">
-            <div style={{ flex: 1 }}>
-              <div className="kpi-label" style={{ color: "rgba(0,255,245,.7)" }}>Receita Retida pelo Salão</div>
-              <div className="kpi-val cyan-val" style={{ fontSize: "28px" }}>
+            <div className="flex-1">
+              <div className="kpi-label kpi-label--cyan">Receita Retida pelo Salão</div>
+              <div className="kpi-val cyan-val kpi-val--md">
                 <strong>{formatBRLSplit(netValue)[0]}</strong>
-                <span className="cents" style={{ opacity: .5 }}>,{formatBRLSplit(netValue)[1]}</span>
+                <span className="cents cents--dim">,{formatBRLSplit(netValue)[1]}</span>
               </div>
               <div className="kpi-sub">Bruto − Comissões</div>
             </div>
@@ -808,7 +808,7 @@ return (
 
       {/* PANEL: RANKING */}
       <div className="panel" id="p-rank">
-        <div className="panel-header" style={{ height: '36px', padding: '0 14px', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(236,72,153,0.2)', backgroundColor: 'transparent' }}>
+        <div className="panel-header panel-header--compact">
           <div className="panel-title"><span className="dot"></span>Ranking de Profissionais</div>
           <div className="panel-controls">
             <button className="ctrl-btn ctrl-min">—</button>
@@ -865,7 +865,7 @@ return (
           </div>
 
           <div className="flex-1 overflow-auto bg-black/20">
-            <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+            <table className="w-full text-left table--collapse">
               <thead>
                 <tr>
                   <th className="px-3 py-2 border-b border-amber-700/20 bg-[#1f2937]/90 sticky top-0 w-8"></th>
@@ -999,8 +999,8 @@ return (
 
       {/* PANEL: HISTORY TABLE */}
       <div className="panel" id="p-table">
-        <div className="panel-header" style={{ flexWrap: 'nowrap', gap: '15px', height: '48px', minHeight: '48px', maxHeight: '48px', padding: '0 15px', alignItems: 'center', display: 'flex' }}>
-          <div className="panel-title" style={{ margin: 0 }}><span className="dot" style={{ background: 'var(--emerald)' }}></span>Histórico de Comissões Pagas</div>
+        <div className="panel-header panel-header--history">
+          <div className="panel-title panel-title--flush"><span className="dot dot--emerald"></span>Histórico de Comissões Pagas</div>
 
           <div className="flex bg-black/40 rounded-sm p-0.5 border border-white/5 ml-4">
             <button
@@ -1458,9 +1458,9 @@ return (
             </div>
 
             <div className="flex gap-3">
-              <button className="pb" style={{ flex: 1, border: '1px solid var(--muted)' }} onClick={() => setIsModalOpen(false)}>Cancelar</button>
+              <button className="pb pb--cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
               <button
-                className="confirm-pay-btn" style={{ backgroundColor: 'var(--emerald)', borderColor: 'var(--emerald)' }}
+                className="confirm-pay-btn confirm-pay-btn--green"
                 onClick={handleLiquidation}
                 disabled={processing}
               >

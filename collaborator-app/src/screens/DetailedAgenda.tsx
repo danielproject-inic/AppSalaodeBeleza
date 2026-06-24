@@ -965,10 +965,10 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
        <div className="flex-1 grid overflow-hidden" style={{ gridTemplateColumns: '260px 1fr 340px' }}>
 
    {/* ========= LEFT PANEL ========= */}
-    <div className="m10-agenda-left flex flex-col overflow-y-auto p-5" style={{ scrollbarWidth: 'thin' }}>
+    <div className="m10-agenda-left flex flex-col overflow-y-auto p-5 scrollbar-thin">
      {/* Header */}
      <div className="pb-4 border-b border-white/[0.04] mb-4">
-      <h1 className="text-xl font-black tracking-tight" style={{fontFamily: 'Bebas Neue', letterSpacing: '0.05em'}}>Agenda</h1>
+      <h1 className="text-xl font-black tracking-tight font-bebas" style={{letterSpacing: '0.05em'}}>Agenda</h1>
       <p className="text-[10px] text-pink-500 font-bold uppercase tracking-[2px] mt-1">Visão Profissional • Tempo Real</p>
      </div>
 
@@ -983,7 +983,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
         setViewDate(next);
         if (currentDate) setCurrentDate(next);
        }} className="w-6 h-6 rounded-lg border border-white/[0.06] bg-transparent text-white/40 flex items-center justify-center hover:text-white transition-all">
-       <span className="material-symbols-outlined" style={{fontSize:14}}>chevron_left</span>
+       <span className="material-symbols-outlined icon-sm">chevron_left</span>
       </button>
       <button onClick={() => { 
         const d = new Date(calDate); 
@@ -992,7 +992,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
         setViewDate(next);
         if (currentDate) setCurrentDate(next);
        }} className="w-6 h-6 rounded-lg border border-white/[0.06] bg-transparent text-white/40 flex items-center justify-center hover:text-white transition-all">
-       <span className="material-symbols-outlined" style={{fontSize:14}}>chevron_right</span>
+       <span className="material-symbols-outlined icon-sm">chevron_right</span>
       </button>
      </div>
     </div>

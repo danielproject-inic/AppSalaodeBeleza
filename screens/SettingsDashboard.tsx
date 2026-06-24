@@ -72,8 +72,7 @@ const SettingsDashboard: React.FC<SettingsDashboardProps> = ({ onNavigate }) => 
 
       {/* Bento Grid layout matching Prototype image - Fixed row height to prevent squashing */}
       <div 
-        className="flex-1 px-12 pb-12 grid grid-cols-4 gap-5"
-        style={{ gridAutoRows: 'minmax(180px, auto)' }}
+        className="flex-1 px-12 pb-12 grid grid-cols-4 gap-5 grid-auto-rows-180"
       >
         
         {/* DADOS */}

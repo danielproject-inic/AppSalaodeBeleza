@@ -212,14 +212,14 @@ const ServicesCatalog: React.FC = () => {
             <header className="h-32 px-12 mx-8 rounded-[1rem] mt-6 flex items-center justify-between relative overflow-hidden glass-hud border border-white/5">
                 <div className="z-10 flex gap-12 items-center">
                     <div className="space-y-1">
-                         <h1 className="text-xl lg:text-2xl font-black text-white italic uppercase tracking-tighter leading-none" style={{ fontFamily: "'Syne', sans-serif" }}>
+                         <h1 className="text-xl lg:text-2xl font-black text-white italic uppercase tracking-tighter leading-none font-syne">
                             Catálogo De <span className="text-amber-500">Serviços</span>
                          </h1>
                     </div>
                     <div className="hidden md:flex gap-8 border-l border-white/10 pl-8">
                          <div className="flex flex-col">
                               <span className="stat-badge text-slate-500 uppercase mb-0.5">Total Serviços</span>
-                              <span className="text-xl font-black text-white text-glow" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                              <span className="text-xl font-black text-white text-glow font-jetbrains">
                                 {services.length}
                               </span>
                          </div>
@@ -276,6 +276,8 @@ const ServicesCatalog: React.FC = () => {
                       <div className="relative group">
                            <Layers className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-700 group-focus-within:text-amber-500 size-4 transition-colors" />
                            <select 
+                                title="Filtrar por Categoria"
+                                aria-label="Filtrar por Categoria"
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
                                 className="appearance-none w-full bg-white/5 border border-white/10 rounded-[0.6rem] py-3 pl-14 pr-10 text-white font-black tracking-widest text-[9px] outline-none focus:border-amber-500/50 transition-all uppercase text-center cursor-pointer"
@@ -333,7 +335,7 @@ const ServicesCatalog: React.FC = () => {
                                <div className="mb-12 flex justify-end items-center relative z-10 w-full">
                                     <div className="text-right">
                                          <span className="stat-badge text-slate-600 block mb-1 uppercase tracking-widest text-[7px]">COMISSÃO</span>
-                                         <span className="text-xl font-black text-white text-glow" style={{ fontFamily: "'JetBrains Mono', monospace" }}>
+                                         <span className="text-xl font-black text-white text-glow font-jetbrains">
                                             {s.commission_percentage}%
                                          </span>
                                     </div>
@@ -343,8 +345,7 @@ const ServicesCatalog: React.FC = () => {
                                <div className="flex flex-col items-center justify-center space-y-3 mb-12 w-full relative z-10">
                                     <div className="flex flex-col items-center w-full px-4">
                                         <h3 
-                                             className="text-[16px] font-black text-white italic tracking-tighter leading-[1.2] transition-colors text-center line-clamp-3 h-[60px] flex items-center justify-center w-full" 
-                                             style={{ fontFamily: "'Syne', sans-serif" }}
+                                             className="text-[16px] font-black text-white italic tracking-tighter leading-[1.2] transition-colors text-center line-clamp-3 h-[60px] flex items-center justify-center w-full font-syne"
                                         >
                                              {s.title}
                                         </h3>
@@ -419,7 +420,7 @@ const ServicesCatalog: React.FC = () => {
 
                     <div className="flex flex-col items-center justify-center mb-16 text-center">
                          <div className="space-y-3">
-                              <h2 className="text-2xl lg:text-3xl font-black text-white italic uppercase tracking-tighter leading-[0.9] text-glow" style={{ fontFamily: "'Syne', sans-serif" }}>
+                              <h2 className="text-2xl lg:text-3xl font-black text-white italic uppercase tracking-tighter leading-[0.9] text-glow font-syne">
                                 {isEditing ? 'Editar' : 'Novo'}<br/><span className="text-amber-500">Protocolo</span>
                               </h2>
                               <div className="flex items-center justify-center gap-3">

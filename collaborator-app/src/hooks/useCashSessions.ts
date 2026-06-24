@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
 
-type CashSession = Database['public']['Tables']['cash_sessions']['Row'];
+type CashSession = Database['public']['Tables']['cash_sessions']['Row'] & {
+    opened_by_profile?: { full_name: string; phone: string } | null;
+    closed_by_profile?: { full_name: string; phone: string } | null;
+};
 type CashSessionInsert = Database['public']['Tables']['cash_sessions']['Insert'];
 
 export const useCashSessions = () => {

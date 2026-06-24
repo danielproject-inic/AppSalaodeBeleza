@@ -856,3 +856,56 @@ input[type="date"]:hover, input[type="month"]:hover {
 .animate-bounce-subtle {
   animation: bounce-subtle 2s infinite ease-in-out;
 }
+
+/* --- UTILITY CLASSES FOR COMMON INLINE OVERRIDES --- */
+
+/* panel-header variants */
+.panel-header--no-border { border-bottom: none; justify-content: flex-start; }
+.panel-header--compact { height: 36px; padding: 0 14px; border-top: 1px solid rgba(255,255,255,0.05); border-bottom: 1px solid rgba(236,72,153,0.2); background-color: transparent; }
+.panel-header--history { flex-wrap: nowrap; gap: 15px; height: 48px; min-height: 48px; max-height: 48px; padding: 0 15px; align-items: center; display: flex; }
+
+/* panel-title no margin */
+.panel-title--flush { margin: 0; }
+
+/* KPI label color variants */
+.kpi-label--pink { color: rgba(255,20,147,.7); }
+.kpi-label--cyan { color: rgba(0,255,245,.7); }
+
+/* KPI value font size variant */
+.kpi-val--md { font-size: 28px; }
+
+/* Dot color variants */
+.dot--cyan { background: var(--cyan); }
+.dot--emerald { background: var(--emerald, #10b981); }
+
+/* Table collapse */
+.table--collapse { border-collapse: collapse; }
+
+/* Panel overflow visible */
+.panel--overflow-visible { overflow: visible; }
+
+/* cents dim */
+.cents--dim { opacity: .5; }
+
+/* Button cancel style */
+.pb--cancel { flex: 1; border: 1px solid var(--muted); }
+
+/* Confirm pay green variant */
+.confirm-pay-btn--green { background-color: var(--emerald, #10b981); border-color: var(--emerald, #10b981); }
+
+/* Font family overrides */
+.font-bebas { font-family: 'Bebas Neue', cursive; }
+.font-syne { font-family: 'Syne', sans-serif; }
+.font-jetbrains { font-family: 'JetBrains Mono', monospace; }
+
+/* Icon size small */
+.icon-sm { font-size: 14px; }
+
+/* Scrollbar thin */
+.scrollbar-thin { scrollbar-width: thin; }
+
+/* Animation delay 2s */
+.animate-delay-2s { animation-delay: 2s; }
+
+/* Grid auto rows */
+.grid-auto-rows-180 { grid-auto-rows: minmax(180px, auto); }

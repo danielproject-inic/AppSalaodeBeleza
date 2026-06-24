@@ -818,7 +818,7 @@ const SalonComissoesDashboard = () => {
 
         {/* FILTER BAR */}
         <div className="panel" id="p-filters">
-          <div className="panel-header" style={{ borderBottom: 'none', justifyContent: 'flex-start' }}>
+          <div className="panel-header panel-header--no-border">
             <div className="flex items-center gap-2">
               <div className="flex bg-black/40 rounded-sm p-0.5 border border-white/5">
                 <button
@@ -903,10 +903,10 @@ const SalonComissoesDashboard = () => {
             </div>
           </div>
           <div className="panel-body">
-            <div className="kpi-label" style={{ color: "rgba(255,20,147,.7)" }}>Total a Liquidar</div>
+            <div className="kpi-label kpi-label--pink">Total a Liquidar</div>
             <div className="kpi-val pink-val">
               <strong>{formatBRLSplit(totalCommissions)[0]}</strong>
-              <span className="cents" style={{ opacity: .5 }}>,{formatBRLSplit(totalCommissions)[1]}</span>
+              <span className="cents cents--dim">,{formatBRLSplit(totalCommissions)[1]}</span>
             </div>
             <div className="kpi-sub">Saldo acumulado pendente</div>
           </div>
@@ -916,18 +916,18 @@ const SalonComissoesDashboard = () => {
         {/* PANEL: NET VALUE */}
         <div className="panel" id="p-liquid">
           <div className="panel-header">
-            <div className="panel-title"><span className="dot" style={{ background: "var(--cyan)" }}></span>Valor Líquido do Salão</div>
+            <div className="panel-title"><span className="dot dot--cyan"></span>Valor Líquido do Salão</div>
             <div className="panel-controls">
               <button className="ctrl-btn ctrl-min">—</button>
             </div>
           </div>
           <div className="panel-body">
             <div className="flex justify-between items-start gap-3">
-              <div style={{ flex: 1 }}>
-                <div className="kpi-label" style={{ color: "rgba(0,255,245,.7)" }}>Receita Retida pelo Salão</div>
-                <div className="kpi-val cyan-val" style={{ fontSize: "28px" }}>
+              <div className="flex-1">
+                <div className="kpi-label kpi-label--cyan">Receita Retida pelo Salão</div>
+                <div className="kpi-val cyan-val kpi-val--md">
                   <strong>{formatBRLSplit(netValue)[0]}</strong>
-                  <span className="cents" style={{ opacity: .5 }}>,{formatBRLSplit(netValue)[1]}</span>
+                  <span className="cents cents--dim">,{formatBRLSplit(netValue)[1]}</span>
                 </div>
                 <div className="kpi-sub">Bruto − Comissões</div>
               </div>
@@ -952,7 +952,7 @@ const SalonComissoesDashboard = () => {
 
         {/* PANEL: RANKING */}
         <div className="panel" id="p-rank">
-          <div className="panel-header" style={{ height: '36px', padding: '0 14px', borderTop: '1px solid rgba(255,255,255,0.05)', borderBottom: '1px solid rgba(236,72,153,0.2)', backgroundColor: 'transparent' }}>
+          <div className="panel-header panel-header--compact">
             <div className="panel-title"><span className="dot"></span>Ranking de Profissionais</div>
             <div className="panel-controls">
               <button className="ctrl-btn ctrl-min">—</button>
@@ -1007,7 +1007,7 @@ const SalonComissoesDashboard = () => {
             </div>
 
             <div className="flex-1 overflow-auto bg-black/20">
-              <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+              <table className="w-full text-left table--collapse">
                 <thead>
                   <tr>
                     <th className="px-3 py-2 border-b border-amber-700/20 bg-[#1f2937]/90 sticky top-0 w-8"></th>
@@ -1133,7 +1133,7 @@ const SalonComissoesDashboard = () => {
                                         onClick={() => setExpandedDayId(expandedDayId === dayObj.id ? null : dayObj.id)}
                                       >
                                         <div className="flex items-center gap-3">
-                                          <button className={`w-4 h-4 flex items-center justify-center rounded-sm border transition-all duration-300 ${expandedDayId === dayObj.id ? 'bg-amber-700/20 border-amber-700 text-amber-700' : 'bg-black/60 border-white/10 text-slate-500'}`}>
+                                          <button type="button" title={expandedDayId === dayObj.id ? "Recolher" : "Expandir"} aria-label={expandedDayId === dayObj.id ? "Recolher" : "Expandir"} className={`w-4 h-4 flex items-center justify-center rounded-sm border transition-all duration-300 ${expandedDayId === dayObj.id ? 'bg-amber-700/20 border-amber-700 text-amber-700' : 'bg-black/60 border-white/10 text-slate-500'}`}>
                                             <svg className={`w-2 h-2 transition-transform duration-300 ${expandedDayId === dayObj.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                                             </svg>
@@ -1185,7 +1185,7 @@ const SalonComissoesDashboard = () => {
                                         onClick={() => setExpandedQuinzenaId(expandedQuinzenaId === qzObj.id ? null : qzObj.id)}
                                       >
                                         <div className="flex items-center gap-3">
-                                          <button className={`w-5 h-5 flex items-center justify-center rounded-sm border transition-all duration-300 ${expandedQuinzenaId === qzObj.id ? 'bg-amber-700/20 border-amber-700 text-amber-700' : 'bg-black/60 border-white/10 text-slate-500'}`}>
+                                          <button type="button" title={expandedQuinzenaId === qzObj.id ? "Recolher" : "Expandir"} aria-label={expandedQuinzenaId === qzObj.id ? "Recolher" : "Expandir"} className={`w-5 h-5 flex items-center justify-center rounded-sm border transition-all duration-300 ${expandedQuinzenaId === qzObj.id ? 'bg-amber-700/20 border-amber-700 text-amber-700' : 'bg-black/60 border-white/10 text-slate-500'}`}>
                                             <svg className={`w-3 h-3 transition-transform duration-300 ${expandedQuinzenaId === qzObj.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                                             </svg>
@@ -1209,7 +1209,7 @@ const SalonComissoesDashboard = () => {
                                                 onClick={() => setExpandedDayId(expandedDayId === dayObj.id ? null : dayObj.id)}
                                               >
                                                 <div className="flex items-center gap-3">
-                                                  <button className={`w-4 h-4 flex items-center justify-center rounded-sm border transition-all duration-300 ${expandedDayId === dayObj.id ? 'bg-amber-700/20 border-amber-700 text-amber-700' : 'bg-black/60 border-white/10 text-slate-500'}`}>
+                                                  <button type="button" title={expandedDayId === dayObj.id ? "Recolher" : "Expandir"} aria-label={expandedDayId === dayObj.id ? "Recolher" : "Expandir"} className={`w-4 h-4 flex items-center justify-center rounded-sm border transition-all duration-300 ${expandedDayId === dayObj.id ? 'bg-amber-700/20 border-amber-700 text-amber-700' : 'bg-black/60 border-white/10 text-slate-500'}`}>
                                                     <svg className={`w-2 h-2 transition-transform duration-300 ${expandedDayId === dayObj.id ? 'rotate-90' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 5l7 7-7 7" />
                                                     </svg>
@@ -1272,9 +1272,9 @@ const SalonComissoesDashboard = () => {
         </div>
 
         {/* PANEL: HISTORY TABLE */}
-        <div className="panel" id="p-table" style={{ overflow: 'visible' }}>
-          <div className="panel-header" style={{ flexWrap: 'nowrap', gap: '15px', height: '48px', minHeight: '48px', maxHeight: '48px', padding: '0 15px', alignItems: 'center', display: 'flex' }}>
-            <div className="panel-title" style={{ margin: 0 }}><span className="dot"></span>Histórico de Comissões Pagas</div>
+        <div className="panel panel--overflow-visible" id="p-table">
+          <div className="panel-header panel-header--history">
+            <div className="panel-title panel-title--flush"><span className="dot"></span>Histórico de Comissões Pagas</div>
 
             <div className="flex items-center gap-1 ml-4 bg-black/20 p-0.5 rounded-sm">
               {['Diário', 'Quinzenal', 'Mensal'].map(p => (
@@ -1761,7 +1761,7 @@ const SalonComissoesDashboard = () => {
               </div>
 
               <div className="flex gap-3">
-                <button className="pb" style={{ flex: 1, border: '1px solid var(--muted)' }} onClick={() => setIsModalOpen(false)}>Cancelar</button>
+                <button className="pb pb--cancel" onClick={() => setIsModalOpen(false)}>Cancelar</button>
                 <button
                   className="confirm-pay-btn"
                   onClick={handleLiquidation}

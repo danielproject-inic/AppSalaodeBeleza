@@ -389,10 +389,34 @@ const CashFlow = () => {
         return groups;
     }, [transactions]);
 
+    const saidasAgrupadas = useMemo(() => {
+        const entries = transactions.filter(t => ['saida', 'sangria'].includes(t.type));
+        const groups: { date: string; items: Transaction[] }[] = [];
+        entries.forEach(t => {
+            const dateKey = t.date || 'Sem data';
+            let group = groups.find(g => g.date === dateKey);
+            if (!group) {
+                group = { date: dateKey, items: [] };
+                groups.push(group);
+            }
+            group.items.push(t);
+        });
+        return groups;
+    }, [transactions]);
+
     // --- Helpers ---
     const parseCurrency = (val: string) => parseFloat(val.toString().replace(/\./g, '').replace(',', '.')) || 0;
     const formatCurrency = (val: number) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     const getCurrentTime = () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    // BRL currency mask: formats input as 1.234,56
+    const handleCurrencyInput = (rawValue: string, setter: (v: string) => void) => {
+        const digits = rawValue.replace(/\D/g, '');
+        if (!digits) { setter(''); return; }
+        const cents = parseInt(digits, 10);
+        const formatted = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        setter(formatted);
+    };
 
     // Session specific transactions for balance calculations
     const sessionTransactions = useMemo(() => {
@@ -1269,21 +1293,36 @@ const CashFlow = () => {
                             </div>
                         ))}
 
-                        {activeTab === 'saidas' && transactions.filter(t => ['saida', 'sangria'].includes(t.type)).map(t => (
-                            <div key={t.id} className="flex items-center justify-between p-5 rounded-[1.5rem] bg-white border border-slate-300 hover:border-rose-300 hover:shadow-md transition-all">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-500 border border-rose-100">
-                                        <span className="material-symbols-outlined">arrow_upward</span>
+                        {activeTab === 'saidas' && saidasAgrupadas.map(group => (
+                            <div key={group.date} className="space-y-4">
+                                <div className="flex items-center gap-3 py-2">
+                                    <div className="h-[1px] flex-1 bg-white/10"></div>
+                                    <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5">
+                                        <span className="material-symbols-outlined text-[14px] text-rose-400">calendar_today</span>
+                                        <span className="text-[10px] font-black text-slate-300 tracking-[0.2em]">{group.date}</span>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-slate-800">{t.description}</h3>
-                                        <p className="text-xs text-slate-800 mt-1">{t.time}</p>
+                                    <div className="h-[1px] flex-1 bg-white/10"></div>
+                                </div>
+                                {group.items.map(t => (
+                                    <div key={t.id} className="flex items-center justify-between p-5 rounded-[1.5rem] bg-white border border-slate-300 hover:border-rose-300 hover:shadow-rose-50/50 hover:shadow-md transition-all">
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-3.5 rounded-2xl bg-rose-50 text-rose-500 border border-rose-100">
+                                                <span className="material-symbols-outlined">arrow_upward</span>
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-800">{t.description}</h3>
+                                                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                                                    <span className="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-md">{t.time}</span>
+                                                    <span className="text-[9px] font-black text-rose-500 bg-rose-50 border border-rose-100 px-2 py-0.5 rounded-lg uppercase tracking-wider">{t.category || 'Despesa'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-mono text-rose-500 font-black text-xl">-{formatCurrency(t.amount)}</p>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.paymentMethod}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="text-right">
-                                    <p className="font-mono text-rose-500 font-black text-xl">-{formatCurrency(t.amount)}</p>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Caixa</p>
-                                </div>
+                                ))}
                             </div>
                         ))}
 
@@ -2507,10 +2546,11 @@ const CashFlow = () => {
                                                 <div className="flex items-center gap-3 bg-[#111827]/40 border border-white/5 rounded-2xl p-4 focus-within:border-rose-500/30 transition-all">
                                                     <span className="font-mono text-rose-400 font-black text-xl">R$</span>
                                                     <input
-                                                        type="number"
+                                                        type="text"
+                                                        inputMode="numeric"
                                                         value={transAmount}
-                                                        onChange={e => setTransAmount(e.target.value)}
-                                                        placeholder="0.00"
+                                                        onChange={e => handleCurrencyInput(e.target.value, setTransAmount)}
+                                                        placeholder="0,00"
                                                         className="bg-transparent text-white outline-none w-full font-mono text-3xl font-black"
                                                     />
                                                 </div>

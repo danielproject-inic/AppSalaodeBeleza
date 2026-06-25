@@ -70,8 +70,10 @@ const CashReports = () => {
             }
         }
 
-        start = `${startYMD}T00:00:00.000Z`;
-        end = `${endYMD}T23:59:59.999Z`;
+        const startDate = new Date(`${startYMD}T00:00:00`);
+        const endDate = new Date(`${endYMD}T23:59:59.999`);
+        start = startDate.toISOString();
+        end = endDate.toISOString();
 
         return { start, end, startYMD, endYMD };
     }, [

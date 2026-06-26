@@ -780,7 +780,7 @@ const CashFlow = () => {
         setModalMode('payment');
     };
 
-    const extractDueDate = (obs: string | null) => {
+    const extractDueDate = (obs: string | null | undefined) => {
         if (!obs) return null;
         const match = obs.match(/\[Vencimento:\s*([^\]]+)\]/);
         return match ? match[1] : null;
@@ -1176,7 +1176,7 @@ const CashFlow = () => {
                                 <div>
                                     <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider">Atendimentos Pendentes no Caixa Anterior</h4>
                                     <p className="text-xs text-white/70 mt-0.5 uppercase tracking-wide">
-                                        Existem atendimentos de {new Date(activeSession.opened_at).toLocaleDateString('pt-BR')} pendentes de pagamento. Finalize-os para poder encerrar o caixa.
+                                        Existem atendimentos de {activeSession?.opened_at ? new Date(activeSession.opened_at).toLocaleDateString('pt-BR') : ''} pendentes de pagamento. Finalize-os para poder encerrar o caixa.
                                     </p>
                                 </div>
                             </div>
@@ -1376,9 +1376,9 @@ const CashFlow = () => {
                                         <div className="flex items-center gap-4">
                                             <div className="text-right">
                                                 <p className="font-mono text-white font-black text-xl">{formatCurrency(t.amount)}</p>
-                                                {t.discount && t.discount > 0 ? (
-                                                    <p className="text-[10px] text-emerald-400 font-bold uppercase mt-0.5">-{formatCurrency(t.discount)} Desc.</p>
-                                                ) : null}
+                                                {(t.discount ?? 0) > 0 && (
+                                                    <p className="text-[10px] text-emerald-400 font-bold uppercase mt-0.5">-{formatCurrency(t.discount ?? 0)} Desc.</p>
+                                                )}
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
@@ -2037,10 +2037,10 @@ const CashFlow = () => {
                                                                  </div>
                                                                  <div className="flex justify-between items-center pt-2 border-t border-white/10">
                                                                      <span className="text-cyan-400 font-black uppercase tracking-[0.2em] text-[10px]">Diferença</span>
-                                                                     <span className={`text-2xl font-black ${Math.abs(
+                                                                     <span className={`text-2xl font-black font-bebas ${Math.abs(
                                                                          Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
                                                                          ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                     ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`} className="text-2xl font-black font-bebas">
+                                                                     ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`}>
                                                                          {Math.abs(
                                                                              Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
                                                                              ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))

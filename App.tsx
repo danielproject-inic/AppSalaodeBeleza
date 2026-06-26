@@ -266,11 +266,7 @@ const App = () => {
                   <button
                     key={item.id}
                     onClick={() => setCurrentScreen(item.id)}
-                    className="group relative flex flex-col items-center justify-center rounded-xl transition-all duration-400 cursor-pointer flex-1"
-                    style={{
-                      padding: '8px 16px',
-                      minWidth: '76px',
-                    }}
+                    className="group relative flex flex-col items-center justify-center rounded-xl transition-all duration-400 cursor-pointer flex-1 px-4 py-2 min-w-[76px]"
                   >
                     {/* Badge for coming soon items */}
                     {item.id === 'products' && (
@@ -285,16 +281,14 @@ const App = () => {
                     )}
 
                     {/* Icon with Subtle Glow */}
-                    <div className="relative z-10 flex items-center justify-center" style={{ width: '38px', height: '38px' }}>
+                    <div className="relative z-10 flex items-center justify-center w-[38px] h-[38px]">
                       {isActive && (
                         <div className="absolute inset-0 rounded-full bg-[#b45309]/10 shadow-[0_0_8px_rgba(180,83,9,0.3)] border border-[#b45309]/30" />
                       )}
                       <span
-                        className="material-symbols-outlined relative z-10 transition-all duration-300"
-                        style={{
-                          fontSize: '28px',
-                          color: isActive ? '#b45309' : '#9ca3af'
-                        }}
+                        className={`material-symbols-outlined relative z-10 transition-all duration-300 text-[28px] ${
+                          isActive ? 'text-[#b45309]' : 'text-[#9ca3af]'
+                        }`}
                       >
                         {item.icon}
                       </span>
@@ -302,14 +296,9 @@ const App = () => {
 
                     {/* Label */}
                     <span
-                      className="relative z-10 transition-colors duration-300"
-                      style={{
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        letterSpacing: '0.05em',
-                        marginTop: '2px',
-                        color: isActive ? '#ffffff' : '#4b5563'
-                      }}
+                      className={`relative z-10 transition-colors duration-300 text-[12px] font-bold tracking-wider mt-0.5 ${
+                        isActive ? 'text-white' : 'text-[#4b5563]'
+                      }`}
                     >
                       {item.label}
                     </span>

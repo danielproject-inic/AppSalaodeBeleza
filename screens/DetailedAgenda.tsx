@@ -442,7 +442,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   return (
    <div className="space-y-4 animate-in fade-in slide-in- duration-300">
     <h3 className="text-lg font-bold text-white mb-4">1. Selecione o Cliente</h3>
-    <input type="text" placeholder="Buscar cliente..." value={filterClient} onChange={e => setFilterClient(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-white/10 bg-white/5 focus:ring-2 focus:ring-cyan-500 text-white" autoFocus />
+    <input type="text" placeholder="Buscar cliente..." title="Buscar cliente..." value={filterClient} onChange={e => setFilterClient(e.target.value)} className="w-full px-4 py-2 rounded-lg border border-white/10 bg-white/5 focus:ring-2 focus:ring-cyan-500 text-white" autoFocus />
     <div className="max-h-[300px] overflow-y-auto space-y-2 custom-scrollbar">
      {filteredClients.map(client => (
       <div key={client.id} onClick={() => { setSelectedClient(client); setWizardStep(2); }} className="p-3 rounded-lg border border-white/10 hover:border-cyan-500 hover:bg-white/5 cursor-pointer flex items-center justify-between group transition-all">
@@ -965,7 +965,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
     <div className="m10-agenda-left flex flex-col overflow-y-auto p-5 scrollbar-thin">
      {/* Header */}
      <div className="pb-4 border-b border-white/[0.04] mb-4">
-      <h1 className="text-xl font-black tracking-tight font-bebas" style={{letterSpacing: '0.05em'}}>Agenda</h1>
+      <h1 className="text-xl font-black tracking-wider font-bebas">Agenda</h1>
       <p className="text-[10px] text-pink-500 font-bold uppercase tracking-[2px] mt-1">Visão Profissional • Tempo Real</p>
      </div>
 
@@ -1213,20 +1213,20 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
    <div className="m10-agenda-right flex flex-col gap-4 p-5 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
     <div className="rounded-2xl p-[18px] bg-white/[0.02] border border-white/[0.04] backdrop-blur-xl">
      <div className="text-[9px] font-extrabold text-white/30 uppercase tracking-[2px]">{currentDate ? 'Agendamentos Hoje' : 'Agendamentos Mês'}</div>
-     <div className="text-3xl font-black mt-2 tracking-tight" style={{fontFamily:'Bebas Neue'}}>{totalAppts}</div>
+     <div className="text-3xl font-black mt-2 tracking-tight font-bebas">{totalAppts}</div>
      <div className="text-[10px] font-bold text-cyan-400 mt-2 flex items-center gap-1"><span className="material-symbols-outlined" style={{fontSize:12}}>arrow_upward</span>20% vs {currentDate ? 'ontem' : 'mês ant.'}</div>
      <div className="h-[4px] bg-white/[0.04] rounded-full mt-3 overflow-hidden"><div className="h-full rounded-full" style={{width:`${Math.min(occupancyRate,100)}%`,background:'var(--cyan)'}}/></div>
     </div>
 
     <div className="rounded-2xl p-[18px] bg-white/[0.02] border border-white/[0.04] backdrop-blur-xl">
      <div className="text-[9px] font-extrabold text-white/30 uppercase tracking-[2px]">Receita Estimada</div>
-     <div className="text-3xl font-black mt-2 tracking-tight text-white" style={{fontFamily:'Bebas Neue'}}>R$ <span className="pink-val">{totalRevenue.toLocaleString('pt-BR')}</span></div>
+     <div className="text-3xl font-black mt-2 tracking-tight text-white font-bebas">R$ <span className="pink-val">{totalRevenue.toLocaleString('pt-BR')}</span></div>
      <p className="text-[10px] text-white/20 font-bold uppercase tracking-widest mt-4 pt-3 border-t border-white/[0.05]">Total projetado para o {currentDate ? 'dia' : 'mês'}</p>
     </div>
 
     <div className="rounded-2xl p-[18px] bg-white/[0.02] border border-white/[0.04] backdrop-blur-xl">
      <div className="text-[9px] font-extrabold text-white/30 uppercase tracking-[2px]">Taxa de Ocupação</div>
-     <div className="text-3xl font-black mt-2 tracking-tight text-pink-500" style={{fontFamily:'Bebas Neue'}}>{occupancyRate}%</div>
+     <div className="text-3xl font-black mt-2 tracking-tight text-pink-500 font-bebas">{occupancyRate}%</div>
      <div className="h-[4px] bg-white/[0.04] rounded-full mt-3 overflow-hidden"><div className="h-full rounded-full" style={{width:`${Math.min(occupancyRate,100)}%`,background:'var(--pink)'}}/></div>
     </div>
 
@@ -1347,7 +1347,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
     <div className="bg-[#1e293b] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[85vh] border border-white/10 animate-in zoom-in-95 text-white">
      <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#0f172a]">
       <div>
-       <h2 className="text-xl font-bold flex items-center gap-2.5 text-white" style={{fontFamily:'Bebas Neue'}}>
+       <h2 className="text-xl font-bold flex items-center gap-2.5 text-white font-bebas">
         <span className="material-symbols-outlined text-pink-500">calendar_add_on</span>Novo Agendamento
        </h2>
        <p className="text-sm text-white/50 mt-1">Passo {wizardStep} de 4</p>

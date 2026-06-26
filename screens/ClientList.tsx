@@ -1002,6 +1002,7 @@ const ClientList: React.FC = () => {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                                 className="block w-full pl-10 pr-10 py-3 border border-white/10 rounded-xl bg-[#1e293b] focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 focus:outline-none shadow-none text-white text-body transition-all"
                                 placeholder="Buscar cliente..."
+                                title="Buscar cliente..."
                                 type="text"
                             />
                         </div>
@@ -1122,7 +1123,7 @@ const ClientList: React.FC = () => {
                                     </div>
 
                                     <div className="mb-2">
-                                        <h1 className="text-4xl font-black text-white tracking-tight mb-1 uppercase" style={{ fontFamily: 'Bebas Neue' }}>{selectedClient.name}</h1>
+                                        <h1 className="text-4xl font-black text-white tracking-tight mb-1 uppercase font-bebas">{selectedClient.name}</h1>
                                         <div className="flex items-center gap-3 text-sm">
                                             {selectedClient.is_vip && (
                                                 <span className="flex items-center gap-1.5 bg-amber-500/10 text-amber-500 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border border-amber-500/20 shadow-[0_0_15px_rgba(245,158,11,0.1)]">

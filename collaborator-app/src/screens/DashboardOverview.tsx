@@ -799,7 +799,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                             </div>
                                         </div>
                                         <div className="relative overflow-hidden bg-transparent pb-4 pt-8">
-                                            <div className="relative mx-4 mb-4" style={{height: '200px'}}>
+                                            <div className="relative mx-4 mb-4 h-[200px]">
                                                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0">
                                                     {[...Array(6)].map((_, i) => (<div key={i} className="w-full border-t border-white/5"></div>))}
                                                 </div>
@@ -1033,7 +1033,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                         </div>
                     </div>
                     <div className="p-0 overflow-auto bg-black/20 rounded-b-xl max-h-[400px]">
-                        <table className="w-full text-left" style={{ borderCollapse: 'collapse' }}>
+                        <table className="w-full text-left border-collapse">
                             <thead className="bg-[#1f2937]/80 sticky top-0 z-10 backdrop-blur-md">
                                 <tr>
                                     <th className="px-4 py-3 text-[9px] font-black text-white/40 uppercase tracking-widest border-b border-white/5">Data</th>

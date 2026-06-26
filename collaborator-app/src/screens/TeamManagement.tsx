@@ -561,7 +561,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                                 <span className="text-[10px] font-black uppercase tracking-widest">Foto</span>
                                             </div>
                                         )}
-                                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" title="Foto de perfil" aria-label="Foto de perfil" />
                                     </div>
                                     <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Recomendado: 400x400</p>
                                 </div>
@@ -590,7 +590,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Nascimento</label>
-                                                <input type="date" name="nascimento" value={newCollaborator.nascimento} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/60 text-white focus:border-amber-500/30 outline-none transition-all font-bold" />
+                                                <input type="date" name="nascimento" value={newCollaborator.nascimento} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/60 text-white focus:border-amber-500/30 outline-none transition-all font-bold" title="Data de nascimento" />
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">WhatsApp</label>
@@ -624,7 +624,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
 
                                             <div className="col-span-1">
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Nº</label>
-                                                <input type="text" name="numero" value={newCollaborator.numero} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/60 text-white focus:border-amber-500/30 outline-none transition-all placeholder:text-white/10 font-bold" />
+                                                <input type="text" name="numero" value={newCollaborator.numero} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/60 text-white focus:border-amber-500/30 outline-none transition-all placeholder:text-white/10 font-bold" title="Número do endereço" placeholder="Ex: 123" />
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Complemento</label>
@@ -632,16 +632,16 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                             </div>
                                             <div className="col-span-3">
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Bairro</label>
-                                                <input type="text" name="bairro" value={newCollaborator.bairro} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/20 text-white/40 outline-none transition-all font-bold cursor-not-allowed" readOnly />
+                                                <input type="text" name="bairro" value={newCollaborator.bairro} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/20 text-white/40 outline-none transition-all font-bold cursor-not-allowed" readOnly title="Bairro" placeholder="Bairro" />
                                             </div>
 
                                             <div className="col-span-4">
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Cidade</label>
-                                                <input type="text" name="cidade" value={newCollaborator.cidade} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/20 text-white/40 outline-none transition-all font-bold cursor-not-allowed" readOnly />
+                                                <input type="text" name="cidade" value={newCollaborator.cidade} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/20 text-white/40 outline-none transition-all font-bold cursor-not-allowed" readOnly title="Cidade" placeholder="Cidade" />
                                             </div>
                                             <div className="col-span-2">
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Estado</label>
-                                                <input type="text" name="estado" value={newCollaborator.estado} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/20 text-white/40 outline-none transition-all font-bold text-center cursor-not-allowed" readOnly />
+                                                <input type="text" name="estado" value={newCollaborator.estado} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/20 text-white/40 outline-none transition-all font-bold text-center cursor-not-allowed" readOnly title="Estado" placeholder="UF" />
                                             </div>
                                         </div>
                                     </div>
@@ -674,7 +674,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                             </div>
                                             <div>
                                                 <label className="block text-[10px] font-black text-white/30 uppercase tracking-widest mb-2.5 px-1">Data de Admissão</label>
-                                                <input type="date" name="admissao" value={newCollaborator.admissao} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/60 text-white focus:border-amber-500/30 outline-none transition-all font-bold" />
+                                                <input type="date" name="admissao" value={newCollaborator.admissao} onChange={handleInputChange} className="w-full px-6 py-4 rounded-2xl border border-white/5 bg-[#0f172a]/60 text-white focus:border-amber-500/30 outline-none transition-all font-bold" title="Data de admissão" />
                                             </div>
                                             <div>
                                                 <div className="flex items-center justify-between mb-2.5 px-1">
@@ -696,6 +696,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                                     value={newCollaborator.desligamento || ''}
                                                     onChange={handleInputChange}
                                                     disabled={!isTerminationChecked}
+                                                    title="Data de desligamento"
                                                     className={`w-full px-6 py-4 rounded-2xl border outline-none transition-all font-bold ${!isTerminationChecked
                                                         ? 'bg-[#0f172a]/20 border-white/5 text-white/10 cursor-not-allowed'
                                                         : 'bg-[#0f172a]/60 border-white/5 text-white focus:border-amber-500/30'
@@ -725,8 +726,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                             {hasAccess?.('team_edit') !== false && (
                                 <button
                                     onClick={handleOpenAdd}
-                                    className="px-6 py-4 text-white rounded-xl flex items-center justify-center gap-2 font-black transition-all shadow-[0_5px_20px_rgba(180,83,9,0.3)] hover:shadow-[0_5px_25px_rgba(180,83,9,0.5)] active:scale-95 group uppercase tracking-widest text-xs shrink-0"
-                                    style={{ background: 'linear-gradient(135deg, #b45309, #d97706)' }}
+                                    className="px-6 py-4 text-white rounded-xl flex items-center justify-center gap-2 font-black transition-all active:scale-95 group uppercase tracking-widest text-xs shrink-0 btn-gradient--amber"
+                                    aria-label="Adicionar novo colaborador"
                                 >
                                     <span className="material-symbols-outlined text-[18px] group-hover:rotate-90 transition-transform duration-300">add</span>
                                     Adicionar Novo Colaborador
@@ -749,6 +750,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                     <select
                                         value={filterFunction}
                                         onChange={(e) => setFilterFunction(e.target.value)}
+                                        title="Filtrar por função"
                                         className="px-6 py-4 bg-[#0f172a] border border-white/10 rounded-2xl text-white font-bold focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 shadow-none outline-none cursor-pointer appearance-none pr-12 min-w-[200px]"
                                     >
                                         <option>Todas as Funções</option>
@@ -765,6 +767,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                     <select
                                         value={filterStatus}
                                         onChange={(e) => setFilterStatus(e.target.value)}
+                                        title="Filtrar por status"
                                         className="px-6 py-4 bg-[#0f172a] border border-white/10 rounded-2xl text-white font-bold focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 shadow-none outline-none cursor-pointer appearance-none pr-12 min-w-[200px]"
                                     >
                                         <option>Status: Todos</option>

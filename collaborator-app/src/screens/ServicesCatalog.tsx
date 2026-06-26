@@ -263,6 +263,7 @@ const ServicesCatalog = () => {
                            <input 
                                 type="text" 
                                 placeholder="BUSCAR POR NOME..." 
+                                title="Buscar por nome"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-white/5 border border-white/10 rounded-[0.6rem] py-3 pl-14 pr-6 text-white font-black tracking-widest text-[9px] outline-none focus:border-amber-500/50 transition-all placeholder:text-amber-500 placeholder:opacity-70 text-center uppercase"

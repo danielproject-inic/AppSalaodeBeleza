@@ -1014,7 +1014,7 @@ const CashFlow: React.FC = () => {
                             <div className="size-20 rounded-[2rem] bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4 animate-bounce">
                                 <span className="material-symbols-outlined text-4xl">priority_high</span>
                             </div>
-                            <h2 className="text-3xl font-black text-white uppercase tracking-tight" style={{ fontFamily: 'Bebas Neue' }}>
+                            <h2 className="text-3xl font-black text-white uppercase tracking-tight font-bebas">
                                 Caixa Pendente de Fechamento!
                             </h2>
                             <p className="text-white/40 text-xs font-bold leading-relaxed px-4 uppercase tracking-widest">
@@ -1608,7 +1608,7 @@ const CashFlow: React.FC = () => {
                         <div className="relative bg-[#1e293b] w-full max-w-2xl rounded-[2.5rem] border border-white/10 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
                             {/* Modal Header */}
                             <div className="p-8 border-b border-white/5 bg-[#0f172a]/40 flex justify-between items-center">
-                                <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3" style={{fontFamily:'Bebas Neue'}}>
+                                <h2 className="text-2xl font-black text-white uppercase tracking-tight flex items-center gap-3 font-bebas">
                                     <span className="material-symbols-outlined text-cyan-400 text-3xl">
                                         {modalMode === 'payment' ? 'payments' : modalMode === 'close' ? 'priority_high' : 'settings'}
                                     </span>
@@ -1791,7 +1791,7 @@ const CashFlow: React.FC = () => {
                                                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-all duration-700" />
                                                     <div className="relative z-10">
                                                         <p className="text-emerald-400 text-[10px] font-black uppercase tracking-widest mb-1">Total a Pagar</p>
-                                                        <p className="text-4xl font-black text-emerald-400" style={{fontFamily:'Bebas Neue'}}>R$ <span className="text-white">{cartItems.reduce((a, b) => a + b.price, 0).toLocaleString('pt-BR')}</span></p>
+                                                        <p className="text-4xl font-black text-emerald-400 font-bebas">R$ <span className="text-white">{cartItems.reduce((a, b) => a + b.price, 0).toLocaleString('pt-BR')}</span></p>
                                                     </div>
                                                     <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center relative z-10">
                                                         <span className="material-symbols-outlined text-3xl text-emerald-400">shopping_cart_checkout</span>
@@ -2060,7 +2060,7 @@ const CashFlow: React.FC = () => {
                                                                      <span className={`text-2xl font-black ${Math.abs(
                                                                          Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
                                                                          ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                     ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`} style={{ fontFamily: 'Bebas Neue' }}>
+                                                                     ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`} className="text-2xl font-black font-bebas">
                                                                          {Math.abs(
                                                                              Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
                                                                              ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
@@ -2147,7 +2147,7 @@ const CashFlow: React.FC = () => {
                                                         <span className="material-symbols-outlined text-3xl text-cyan-400">task_alt</span>
                                                     </div>
                                                     <span className="text-[10px] text-cyan-400 uppercase font-black tracking-[0.2em] mb-1">Pagamento via</span>
-                                                    <span className="text-2xl font-black text-white uppercase tracking-tight" style={{fontFamily:'Bebas Neue'}}>{transMethod}</span>
+                                                    <span className="text-2xl font-black text-white uppercase tracking-tight font-bebas">{transMethod}</span>
                                                 </div>
 
                                                 <div className="space-y-4">
@@ -2272,7 +2272,7 @@ const CashFlow: React.FC = () => {
                                                         <div className="relative z-10 w-full pr-16">
                                                             <span className="text-emerald-400 font-black uppercase tracking-[0.2em] text-[10px]">Total Líquido</span>
                                                             <div className="flex items-center justify-between mt-1">
-                                                                <span className="text-4xl font-black text-emerald-400" style={{fontFamily:'Bebas Neue'}}>
+                                                                <span className="text-4xl font-black text-emerald-400 font-bebas">
                                                                     R$ <span className="text-white">{(Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0) / 100))).toLocaleString('pt-BR')}</span>
                                                                 </span>
                                                                 {paymentDiscountPercent && (
@@ -2410,7 +2410,7 @@ const CashFlow: React.FC = () => {
                                         </div>
 
                                         <div className="text-center">
-                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase" style={{fontFamily:'Bebas Neue'}}>Iniciar Expediente</h3>
+                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase font-bebas">Iniciar Expediente</h3>
                                             <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mt-1">Confirme os dados para ABRIR CAIXA</p>
                                         </div>
 
@@ -2475,7 +2475,7 @@ const CashFlow: React.FC = () => {
                                         </div>
 
                                         <div className="text-center">
-                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase" style={{fontFamily:'Bebas Neue'}}>Solicitações de Vale</h3>
+                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase font-bebas">Solicitações de Vale</h3>
                                             <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mt-1">Aprove ou negue os adiantamentos solicitados</p>
                                         </div>
 
@@ -2500,7 +2500,7 @@ const CashFlow: React.FC = () => {
                                                                     </p>
                                                                 </div>
                                                             </div>
-                                                            <span className="font-mono font-black text-xl text-white tracking-tighter" style={{fontFamily:'Bebas Neue'}}>{formatCurrency(req.amount)}</span>
+                                                            <span className="font-mono font-black text-xl text-white tracking-tighter font-bebas">{formatCurrency(req.amount)}</span>
                                                         </div>
 
                                                         {req.reason && (
@@ -2703,7 +2703,7 @@ const CashFlow: React.FC = () => {
                                                 <div className="flex justify-between items-end">
                                                     <div>
                                                         <span className="text-cyan-400 text-[10px] font-black uppercase tracking-[0.2em]">Saldo em Mãos</span>
-                                                        <p className="text-5xl font-black mt-1 text-white" style={{fontFamily:'Bebas Neue'}}>R$ <span className="text-white">{saldoAtual.toLocaleString('pt-BR')}</span></p>
+                                                        <p className="text-5xl font-black mt-1 text-white font-bebas">R$ <span className="text-white">{saldoAtual.toLocaleString('pt-BR')}</span></p>
                                                     </div>
                                                     <div className="text-right">
                                                         <span className="text-white/30 text-[10px] font-black uppercase tracking-[0.2em]">Status do Turno</span>
@@ -2717,11 +2717,11 @@ const CashFlow: React.FC = () => {
                                                 <div className="grid grid-cols-2 gap-4 border-t border-white/5 pt-8">
                                                     <div className="bg-white/5 border border-white/5 p-5 rounded-2xl">
                                                         <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block mb-2">Entradas (+)</span>
-                                                        <span className="text-emerald-400 font-black text-2xl tracking-tighter" style={{fontFamily:'Bebas Neue'}}>+{formatCurrency(totalEntradas)}</span>
+                                                        <span className="text-emerald-400 font-black text-2xl tracking-tighter font-bebas">+{formatCurrency(totalEntradas)}</span>
                                                     </div>
                                                     <div className="bg-white/5 border border-white/5 p-5 rounded-2xl">
                                                         <span className="text-white/30 text-[9px] font-black uppercase tracking-widest block mb-2">Saídas (-)</span>
-                                                        <span className="text-rose-400 font-black text-2xl tracking-tighter" style={{fontFamily:'Bebas Neue'}}>-{formatCurrency(totalSaidas)}</span>
+                                                        <span className="text-rose-400 font-black text-2xl tracking-tighter font-bebas">-{formatCurrency(totalSaidas)}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2806,7 +2806,7 @@ const CashFlow: React.FC = () => {
                                         </div>
 
                                         <div className="text-center">
-                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase" style={{fontFamily:'Bebas Neue'}}>Dar Baixa em Débito</h3>
+                                            <h3 className="text-3xl font-black text-white tracking-tight uppercase font-bebas">Dar Baixa em Débito</h3>
                                             <p className="text-white/30 text-[10px] font-black uppercase tracking-widest mt-1">Quitar pagamento pendente do cliente</p>
                                         </div>
 
@@ -2885,7 +2885,7 @@ const CashFlow: React.FC = () => {
                             <div className="size-24 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(16,185,129,0.1)]">
                                 <span className="material-symbols-outlined text-5xl">check_circle</span>
                             </div>
-                            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight" style={{fontFamily:'Bebas Neue'}}>{success.title}</h2>
+                            <h2 className="text-3xl font-black text-white mb-2 uppercase tracking-tight font-bebas">{success.title}</h2>
                             <p className="text-white/40 text-xs font-bold mb-8 leading-relaxed px-4 uppercase tracking-widest">
                                 {success.message}
                             </p>

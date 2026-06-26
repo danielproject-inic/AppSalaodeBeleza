@@ -300,7 +300,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   }
 
   // Check existing appointments
-  const existingApps = (appointments || []).filter(a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago');
+  const existingApps = (appointments || []).filter(a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago' && a.status !== 'concluido');
   const hasCollision = existingApps.some(apt => {
    const aptStart = parseInt(apt.startHour) * 60 + parseInt(apt.startMinute);
    const aptEnd = aptStart + apt.durationMinutes;
@@ -323,7 +323,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
  const appointmentsByProf = useMemo(() => {
   const map = new Map<string, Appointment[]>();
   dailyAppointments.forEach(apt => {
-   const isVisible = apt.status !== 'cancelled' && apt.status !== 'pago';
+    const isVisible = apt.status !== 'cancelled' && apt.status !== 'pago' && apt.status !== 'concluido';
    if (isVisible) {
     if (!map.has(apt.professionalId)) {
      map.set(apt.professionalId, []);
@@ -557,7 +557,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
        );
 
        const existingApps = (appointments || []).filter(
-           a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago'
+           a => a.professionalId === selectedProfessional.id && a.date === wizardDate && a.status !== 'cancelled' && a.status !== 'pago' && a.status !== 'concluido'
        );
 
        // Build the smart ruler labels (green for free hours, red for occupied start/end times)
@@ -931,7 +931,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   const occupancyRate = divisor > 0 ? Math.round((totalAppts / divisor) * 100) : 0;
 
    const upcomingAppts = (appointments || [])
-    .filter(a => a && a.status !== 'cancelled' && a.status !== 'pago' && a.professionalId === selectedProfTab)
+    .filter(a => a && a.status !== 'cancelled' && a.status !== 'pago' && a.status !== 'concluido' && a.professionalId === selectedProfTab)
     .sort((a, b) => {
       const timeA = new Date(`${a.date}T${a.startHour}:${a.startMinute}:00`).getTime();
       const timeB = new Date(`${b.date}T${b.startHour}:${b.startMinute}:00`).getTime();
@@ -1024,7 +1024,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
        const dotProfId = selectedProfTab || professionalId;
        const dayAppts = (monthAppointmentsByDate.get(dayStr) || []).filter(a => a.professionalId === dotProfId);
        const hasAppts = dayAppts.length > 0;
-       const allFinalized = hasAppts && dayAppts.every(a => a.status === 'pago' || a.status === 'cancelled');
+       const allFinalized = hasAppts && dayAppts.every(a => a.status === 'pago' || a.status === 'concluido' || a.status === 'cancelled');
        
        let tooltipText = "";
        if (hasAppts) {
@@ -1055,7 +1055,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
      <div className="flex flex-col gap-1.5">
       {professionals.map((p, i) => {
         const profAppts = dailyAppointments.filter(a => a.professionalId === p.id && a.status !== 'cancelled');
-        const allPaid = profAppts.length > 0 && profAppts.every(a => a.status === 'pago');
+        const allPaid = profAppts.length > 0 && profAppts.every(a => a.status === 'pago' || a.status === 'concluido');
         const dayEx = dbExceptions.filter(ex => ex.date === currentDate && ex.professional_id === p.id);
         const hasCriticalEx = dayEx.some(ex => ex.type === 'vacation' || ex.type === 'sick' || ex.type === 'off');
         const hasLunchEx = dayEx.some(ex => ex.type === 'lunch');
@@ -1168,7 +1168,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
            
            {mAppts.map(apt => {
             const color = getColorForAppt(apt);
-            const statusBadge = apt.status === 'pago' ? {bg:'rgba(16,185,129,0.1)',color:'#10b981',text:'✓ Concluído'} :
+            const statusBadge = apt.status === 'pago' || apt.status === 'concluido' ? {bg:'rgba(16,185,129,0.1)',color:'#10b981',text:'✓ Concluído'} :
              apt.status === 'em_atendimento' ? {bg:'rgba(99,102,241,0.1)',color:'#818cf8',text:'● Em Atendimento'} :
              apt.status === 'confirmed' ? {bg:'rgba(16,185,129,0.1)',color:'#10b981',text:'✓ Confirmado'} :
              {bg:'rgba(245,158,11,0.1)',color:'#f59e0b',text:'● Pendente'};
@@ -1284,7 +1284,7 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
      
      <div className="space-y-0">
       {appointments
-        .filter(a => ['pago', 'confirmed', 'cancelled', 'em_atendimento'].includes(a.status))
+        .filter(a => ['pago', 'confirmed', 'cancelled', 'em_atendimento', 'concluido'].includes(a.status))
         .sort((a, b) => new Date(b.updatedAt || 0).getTime() - new Date(a.updatedAt || 0).getTime())
         .slice(0, 5)
         .map((a, i) => {
@@ -1296,12 +1296,12 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
           if (diffMins >= 60 && diffMins < 1440) timeLabel = `há ${Math.floor(diffMins/60)}h`;
           else if (diffMins >= 1440) timeLabel = `há ${Math.floor(diffMins/1440)}d`;
 
-          const dotColor = a.status === 'pago' ? 'bg-cyan-400' : 
+          const dotColor = a.status === 'pago' || a.status === 'concluido' ? 'bg-cyan-400' : 
                           a.status === 'confirmed' ? 'bg-pink-500' : 
                           a.status === 'cancelled' ? 'bg-red-500' : 'bg-emerald-400';
 
           let message = "";
-          if (a.status === 'pago') message = `<strong class="text-white">${a.professionalName}</strong> finalizou <strong class="text-white">${a.clientName}</strong>`;
+          if (a.status === 'pago' || a.status === 'concluido') message = `<strong class="text-white">${a.professionalName}</strong> finalizou <strong class="text-white">${a.clientName}</strong>`;
           else if (a.status === 'confirmed') message = `<strong class="text-white">${a.clientName}</strong> confirmou às ${a.startHour}:${a.startMinute}`;
           else if (a.status === 'cancelled') message = `<strong class="text-white">${a.clientName}</strong> cancelou ${a.service}`;
           else if (a.status === 'em_atendimento') message = `<strong class="text-white">${a.professionalName}</strong> iniciou ${a.service}`;

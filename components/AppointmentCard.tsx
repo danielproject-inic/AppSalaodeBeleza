@@ -12,7 +12,7 @@ export interface Appointment {
  endHour: string;
  endMinute: string;
  durationMinutes: number;
- status: 'confirmed' | 'pending' | 'cancelled' | 'noshow' | 'pago' | 'em_atendimento';
+ status: 'confirmed' | 'pending' | 'cancelled' | 'noshow' | 'pago' | 'em_atendimento' | 'concluido';
  date: string; // YYYY-MM-DD
  servico_iniciado_at?: string;
  servico_terminado_at?: string;
@@ -29,7 +29,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ apt, onUpdateSta
  return (
  <div
  className={`absolute left-5 right-2 rounded-2xl p-3 border-l-[6px] shadow-lg cursor-default transition-all hover:shadow-2xl z-10 group overflow-hidden
- ${apt.status === 'confirmed' ? ' dark: dark: border-l-green-500/80 border-t border-r border-b border-cyan-100/50 dark:border-gray-700/50' :
+ ${apt.status === 'confirmed' || apt.status === 'pago' || apt.status === 'concluido' ? ' dark: dark: border-l-green-500/80 border-t border-r border-b border-cyan-100/50 dark:border-gray-700/50' :
  apt.status === 'pending' ? ' dark: dark: border-l-amber-500/80 border-amber-500/20' :
  'bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all rounded-xl border-l-gray-500'}
  `}
@@ -44,7 +44,7 @@ const AppointmentCard: React.FC<AppointmentCardProps> = memo(({ apt, onUpdateSta
  <div className="flex justify-between items-start relative z-10">
  <div className="font-bold text-sm text-slate-800/90 dark:text-gray-100 truncate pr-2">{apt.clientName}</div>
  <div className="flex gap-1">
- {apt.status === 'confirmed' && <span className="material-symbols-outlined text-green-500 text-xs">verified</span>}
+ {(apt.status === 'confirmed' || apt.status === 'pago' || apt.status === 'concluido') && <span className="material-symbols-outlined text-green-500 text-xs">verified</span>}
  </div>
  </div>
  <div className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5 max-w-[75%]">{apt.service}</div>

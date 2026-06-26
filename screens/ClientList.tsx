@@ -1383,12 +1383,13 @@ const ClientList: React.FC = () => {
                                                                     </div>
                                                                 </div>
                                                                 <div className="ml-4 flex flex-col items-end gap-2">
-                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.status === 'confirmed' || item.status === 'pago' ? 'bg-green-100 text-green-700' :
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.status === 'confirmed' || item.status === 'pago' || item.status === 'concluido' ? 'bg-green-100 text-green-700' :
                                                                         item.status === 'pending' ? ' shadow-md text-white/15 text-cyan-700' : 'bg-[#1e293b] border border-white/10 shadow-sm hover:shadow-md transition-all rounded-xl text-white/60'
                                                                         }`}>
                                                                         {item.status === 'confirmed' ? 'Confirmado' :
                                                                             item.status === 'pending' ? 'Pendente' :
-                                                                                item.status === 'pago' ? 'Pago' : item.status}
+                                                                                item.status === 'pago' ? 'Pago' :
+                                                                                    item.status === 'concluido' ? 'Concluído' : item.status}
                                                                     </span>
                                                                     {item.hasExtras && (
                                                                         <button

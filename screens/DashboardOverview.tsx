@@ -448,7 +448,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
             if (a.status === 'pending' || a.status === 'confirmado' || a.status === 'confirmed') color = '#22c55e'; // emerald is actually #10b981
             if (a.status === 'cancelled') color = '#ef4444';
             if (a.status === 'em_atendimento') color = '#3b82f6';
-            if (a.status === 'pago') color = '#8b5cf6';
+            if (a.status === 'pago' || a.status === 'concluido') color = '#8b5cf6';
 
             return {
                 time,
@@ -1470,9 +1470,9 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                         } else if (appt.status === 'em_atendimento') {
                                             statusColor = 'bg-blue-500/20 text-blue-400 border-blue-500/20';
                                             statusText = 'Em Atendimento';
-                                        } else if (appt.status === 'pago') {
+                                        } else if (appt.status === 'pago' || appt.status === 'concluido') {
                                             statusColor = 'bg-purple-500/20 text-purple-400 border-purple-500/20';
-                                            statusText = 'Pago';
+                                            statusText = appt.status === 'concluido' ? 'Concluído' : 'Pago';
                                         }
 
                                         return (

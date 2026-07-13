@@ -533,6 +533,18 @@ const CashFlow: React.FC = () => {
 
     const handleProcessPayment = async () => {
         if (isProcessingPayment) return;
+
+        if (!selectedClient || !dbClients.some(c => c.id === selectedClient?.id)) {
+            alert('Por favor, selecione um cliente cadastrado antes de finalizar a venda.');
+            setIsProcessingPayment(false);
+            return;
+        }
+
+        if (cartItems.length === 0) {
+            alert('Por favor, adicione pelo menos um serviço ao checkout.');
+            setIsProcessingPayment(false);
+            return;
+        }
         
         if (needsManagerAuth && !isDiscountAuthorized) {
             alert('A autorização do gerente é obrigatória para conceder desconto.');
@@ -1798,344 +1810,360 @@ const CashFlow: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Modo Dividido / Único Toggle */}
-                                                <div className="flex bg-[#111827]/40 border border-white/5 rounded-2xl p-1 mb-4">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setIsSplitPayment(false);
-                                                            setTransMethod('');
-                                                            setSplitAmounts({ PIX: '', Dinheiro: '', Crédito: '', Débito: '', Pendente: '' });
-                                                        }}
-                                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
-                                                            ${!isSplitPayment ? 'bg-[#0f172a] text-cyan-400 border border-white/5 shadow-lg' : 'text-white/40 hover:text-white'}`}
-                                                    >
-                                                        Pagamento Único
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setIsSplitPayment(true);
-                                                            setTransMethod('Split');
-                                                            setPaymentDiscountPercent('');
-                                                            setCashReceived('');
-                                                            setPendingDueDate('');
-                                                        }}
-                                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
-                                                            ${isSplitPayment ? 'bg-[#0f172a] text-cyan-400 border border-white/5 shadow-lg' : 'text-white/40 hover:text-white'}`}
-                                                    >
-                                                        Dividir Pagamento
-                                                    </button>
-                                                </div>
-
-                                                {isSplitPayment ? (
-                                                    <div className="space-y-6 animate-in fade-in duration-300">
-                                                         {/* Inputs of Split Amounts */}
-                                                         <div className="grid grid-cols-2 gap-4">
-                                                             {/* PIX */}
-                                                             <div className="space-y-1">
-                                                                 <label className="text-[10px] text-emerald-400 uppercase font-black tracking-widest px-2">Pix</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-emerald-400 text-lg">qr_code_2</span>
-                                                                     <input
-                                                                         type="number"
-                                                                         step="0.01"
-                                                                         placeholder="0.00"
-                                                                         title="Valor no Pix"
-                                                                         aria-label="Valor no Pix"
-                                                                         value={splitAmounts.PIX}
-                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, PIX: e.target.value }))}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                     />
-                                                                 </div>
-                                                             </div>
-
-                                                             {/* Dinheiro */}
-                                                             <div className="space-y-1">
-                                                                 <label className="text-[10px] text-amber-400 uppercase font-black tracking-widest px-2">Dinheiro</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-amber-400 text-lg">payments</span>
-                                                                     <input
-                                                                         type="number"
-                                                                         step="0.01"
-                                                                         placeholder="0.00"
-                                                                         title="Valor em Dinheiro"
-                                                                         aria-label="Valor em Dinheiro"
-                                                                         value={splitAmounts.Dinheiro}
-                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Dinheiro: e.target.value }))}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                     />
-                                                                 </div>
-                                                             </div>
-
-                                                             {/* Crédito */}
-                                                             <div className="space-y-1">
-                                                                 <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest px-2">Cartão Crédito</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-indigo-400 text-lg">credit_card</span>
-                                                                     <input
-                                                                         type="number"
-                                                                         step="0.01"
-                                                                         placeholder="0.00"
-                                                                         title="Valor no Cartão de Crédito"
-                                                                         aria-label="Valor no Cartão de Crédito"
-                                                                         value={splitAmounts.Crédito}
-                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Crédito: e.target.value }))}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                     />
-                                                                 </div>
-                                                             </div>
-
-                                                             {/* Débito */}
-                                                             <div className="space-y-1">
-                                                                 <label className="text-[10px] text-blue-400 uppercase font-black tracking-widest px-2">Cartão Débito</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-blue-400 text-lg">credit_score</span>
-                                                                     <input
-                                                                         type="number"
-                                                                         step="0.01"
-                                                                         placeholder="0.00"
-                                                                         title="Valor no Cartão de Débito"
-                                                                         aria-label="Valor no Cartão de Débito"
-                                                                         value={splitAmounts.Débito}
-                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Débito: e.target.value }))}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                     />
-                                                                 </div>
-                                                             </div>
-
-                                                             {/* Pendente */}
-                                                             <div className="col-span-2 space-y-1">
-                                                                 <label className="text-[10px] text-rose-400 uppercase font-black tracking-widest px-2">Pagar Depois (Pendente / Fiado)</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-rose-400 text-lg">pending_actions</span>
-                                                                     <input
-                                                                         type="number"
-                                                                         step="0.01"
-                                                                         placeholder="0.00"
-                                                                         title="Valor Pendente"
-                                                                         aria-label="Valor Pendente"
-                                                                         value={splitAmounts.Pendente}
-                                                                         onChange={e => setSplitAmounts(prev => ({ ...prev, Pendente: e.target.value }))}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                     />
-                                                                 </div>
-                                                             </div>
-                                                         </div>
-
-                                                         {/* Condicionais de Dinheiro e Pendente */}
-                                                         {(parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (
-                                                             <div className="space-y-1 pl-4 border-l-2 border-amber-500/30 animate-in slide-in-from-top-2 duration-300">
-                                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Valor Recebido em Dinheiro (Obrigatório)</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-cyan-400 text-lg">payments</span>
-                                                                     <input
-                                                                         type="number"
-                                                                         step="0.01"
-                                                                         placeholder="0.00"
-                                                                         title="Valor recebido em dinheiro"
-                                                                         aria-label="Valor recebido em dinheiro"
-                                                                         value={cashReceived}
-                                                                         onChange={e => setCashReceived(e.target.value)}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                         required
-                                                                     />
-                                                                 </div>
-                                                                 {cashReceived && (parseFloat(cashReceived) || 0) >= (parseFloat(splitAmounts.Dinheiro) || 0) && (
-                                                                     <p className="text-xs text-amber-400 font-bold px-2 mt-1">
-                                                                         Troco: {formatCurrency((parseFloat(cashReceived) || 0) - (parseFloat(splitAmounts.Dinheiro) || 0))}
-                                                                     </p>
-                                                                 )}
-                                                             </div>
-                                                         )}
-
-                                                         {(parseFloat(splitAmounts.Pendente) || 0) > 0 && (
-                                                             <div className="space-y-1 pl-4 border-l-2 border-rose-500/30 animate-in slide-in-from-top-2 duration-300">
-                                                                 <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Data Prometida para o Pagamento (Obrigatório)</label>
-                                                                 <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                     <span className="material-symbols-outlined text-cyan-400 text-lg">calendar_today</span>
-                                                                     <input
-                                                                         type="date"
-                                                                         value={pendingDueDate}
-                                                                         title="Data Prometida para o Pagamento"
-                                                                         placeholder="AAAA-MM-DD"
-                                                                         aria-label="Data Prometida para o Pagamento"
-                                                                         onChange={e => setPendingDueDate(e.target.value)}
-                                                                         className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
-                                                                         required
-                                                                     />
-                                                                 </div>
-                                                             </div>
-                                                         )}
-
-                                                         {/* Desconto */}
-                                                         <div className="space-y-1">
-                                                             <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Desconto Opcional (%)</label>
-                                                             <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
-                                                                 <span className="material-symbols-outlined text-cyan-400 text-lg">percent</span>
-                                                                 <input
-                                                                     type="number"
-                                                                     placeholder="0"
-                                                                     title="Desconto em porcentagem"
-                                                                     aria-label="Desconto em porcentagem"
-                                                                     value={paymentDiscountPercent}
-                                                                     onChange={e => setPaymentDiscountPercent(e.target.value)}
-                                                                     className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
-                                                                 />
-                                                             </div>
-                                                         </div>
-
-                                                         {/* Manager Auth */}
-                                                         {needsManagerAuth && (
-                                                             <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3 mt-2 animate-in slide-in-from-top-2 duration-300">
-                                                                 <div className="flex items-center gap-2 text-amber-400">
-                                                                     <span className="material-symbols-outlined text-lg">shield_person</span>
-                                                                     <span className="text-[10px] font-black uppercase tracking-widest">Autorização do Gerente Necessária</span>
-                                                                 </div>
-                                                                 {isDiscountAuthorized ? (
-                                                                     <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
-                                                                         <span className="material-symbols-outlined text-lg">verified</span>
-                                                                         <span className="text-xs font-bold">Desconto Autorizado por Gerente</span>
-                                                                     </div>
-                                                                 ) : (
-                                                                     <div className="space-y-2">
-                                                                         <input
-                                                                             type="email"
-                                                                             placeholder="E-mail do Gerente"
-                                                                             title="E-mail do Gerente"
-                                                                             aria-label="E-mail do Gerente"
-                                                                             value={managerEmail}
-                                                                             onChange={e => setManagerEmail(e.target.value)}
-                                                                             className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
-                                                                         />
-                                                                         <input
-                                                                             type="password"
-                                                                             placeholder="Senha do Gerente"
-                                                                             title="PIN do Gerente"
-                                                                             aria-label="PIN do Gerente"
-                                                                             value={managerPassword}
-                                                                             onChange={e => setManagerPassword(e.target.value)}
-                                                                             className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
-                                                                         />
-                                                                         {authError && (
-                                                                             <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider">{authError}</p>
-                                                                         )}
-                                                                         <button
-                                                                             type="button"
-                                                                             onClick={handleValidateManagerAuth}
-                                                                             disabled={isValidatingAuth || !managerEmail || !managerPassword}
-                                                                             className="w-full py-2 bg-amber-500 disabled:bg-white/5 disabled:text-white/20 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all border-none font-sans cursor-pointer"
-                                                                         >
-                                                                             {isValidatingAuth ? 'Validando...' : 'Autorizar Desconto'}
-                                                                         </button>
-                                                                     </div>
-                                                                 )}
-                                                             </div>
-                                                         )}
-
-                                                         {/* Real-time Summary Card */}
-                                                         <div className="p-6 rounded-3xl bg-[#0f172a] text-white space-y-3 shadow-2xl border border-white/5 relative overflow-hidden group">
-                                                             <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
-                                                             <div className="relative z-10 space-y-2.5">
-                                                                 <div className="flex justify-between items-center text-xs">
-                                                                     <span className="text-white/40 font-black uppercase tracking-widest">Subtotal</span>
-                                                                     <span className="font-bold text-white/80">{formatCurrency(cartItems.reduce((a, b) => a + b.price, 0))}</span>
-                                                                 </div>
-                                                                 {parseFloat(paymentDiscountPercent) > 0 && (
-                                                                     <div className="flex justify-between items-center text-xs">
-                                                                         <span className="text-emerald-400 font-black uppercase tracking-widest">Desconto</span>
-                                                                         <span className="font-bold text-emerald-400">-{formatCurrency((cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100)}</span>
-                                                                     </div>
-                                                                 )}
-                                                                 <div className="flex justify-between items-center pt-2 border-t border-white/5 text-sm">
-                                                                     <span className="text-white/40 font-black uppercase tracking-widest">Total Líquido</span>
-                                                                     <span className="font-bold text-white">{formatCurrency(Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100))}</span>
-                                                                 </div>
-                                                                 <div className="flex justify-between items-center text-sm">
-                                                                     <span className="text-white/40 font-black uppercase tracking-widest">Total Informado</span>
-                                                                     <span className="font-bold text-white">{formatCurrency((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))}</span>
-                                                                 </div>
-                                                                 <div className="flex justify-between items-center pt-2 border-t border-white/10">
-                                                                     <span className="text-cyan-400 font-black uppercase tracking-[0.2em] text-[10px]">Diferença</span>
-                                                                     <span className={`text-2xl font-black font-bebas ${Math.abs(
-                                                                         Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
-                                                                         ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                     ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`}>
-                                                                         {Math.abs(
-                                                                             Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
-                                                                             ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                         ) < 0.01 ? 'R$ 0,00 (Pronto)' : formatCurrency(
-                                                                             Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
-                                                                             ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                         )}
-                                                                     </span>
-                                                                 </div>
-                                                             </div>
-                                                         </div>
-
-                                                         {/* Action Buttons */}
-                                                         <div className="flex gap-3 pt-3">
-                                                             <button
-                                                                 onClick={() => setModalMode('none')}
-                                                                 className="flex-1 py-4 rounded-xl border border-white/10 text-white/40 font-black uppercase tracking-widest text-[10px] hover:bg-white/5 hover:text-white transition-all"
-                                                             >
-                                                                 Cancelar
-                                                             </button>
-                                                             <button
-                                                                 disabled={
-                                                                     isProcessingPayment ||
-                                                                     Math.abs(
-                                                                         Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
-                                                                         ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                     ) >= 0.01 ||
-                                                                     ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
-                                                                     ((parseFloat(splitAmounts.Pendente) || 0) > 0 && !pendingDueDate) ||
-                                                                     ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
-                                                                     (needsManagerAuth && !isDiscountAuthorized)
-                                                                 }
-                                                                 onClick={handleProcessPayment}
-                                                                 className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
-                                                                     ${(
-                                                                         isProcessingPayment ||
-                                                                         Math.abs(
-                                                                             Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
-                                                                             ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
-                                                                         ) >= 0.01 ||
-                                                                         ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
-                                                                         ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!pendingDueDate)) ||
-                                                                         ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
-                                                                         (needsManagerAuth && !isDiscountAuthorized)
-                                                                     )
-                                                                         ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
-                                                                         : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
-                                                             >
-                                                                 {isProcessingPayment ? 'Processando...' : 'Finalizar e Emitir'}
-                                                             </button>
-                                                         </div>
+                                                {!selectedClient ? (
+                                                    <div className="p-10 text-center bg-amber-500/5 border border-dashed border-amber-500/20 rounded-[2rem] space-y-3 animate-in zoom-in-95 duration-300">
+                                                        <span className="material-symbols-outlined text-amber-500 text-5xl">person_search</span>
+                                                        <h4 className="text-lg font-black text-amber-400 uppercase tracking-widest font-bebas">Cliente Obrigatório</h4>
+                                                        <p className="text-[10px] text-white/50 leading-relaxed uppercase tracking-wider max-w-sm mx-auto">Por favor, selecione ou busque um cliente cadastrado antes de prosseguir com o pagamento.</p>
+                                                    </div>
+                                                ) : cartItems.length === 0 ? (
+                                                    <div className="p-10 text-center bg-amber-500/5 border border-dashed border-amber-500/20 rounded-[2rem] space-y-3 animate-in zoom-in-95 duration-300">
+                                                        <span className="material-symbols-outlined text-amber-500 text-5xl">shopping_cart</span>
+                                                        <h4 className="text-lg font-black text-amber-400 uppercase tracking-widest font-bebas">Nenhum Serviço Adicionado</h4>
+                                                        <p className="text-[10px] text-white/50 leading-relaxed uppercase tracking-wider max-w-sm mx-auto">Adicione pelo menos um serviço ao checkout para prosseguir.</p>
                                                     </div>
                                                 ) : (
-                                                    /* Single Payment Method Options Selection */
-                                                    <div className="space-y-6 animate-in fade-in duration-300">
-                                                        <div className="space-y-3">
-                                                            <label className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] block">Forma de Pagamento</label>
-                                                            <div className="grid grid-cols-2 gap-3">
-                                                                <PaymentMethodBtn method="PIX" icon="qr_code_2" label="Pix" activeColor="bg-emerald-500 text-white" borderColor="border-emerald-500/50" />
-                                                                <PaymentMethodBtn method="Dinheiro" icon="payments" label="Dinheiro" activeColor="bg-amber-500 text-white" borderColor="border-amber-500/50" />
-                                                                <PaymentMethodBtn method="Crédito" icon="credit_card" label="Cartão Crédito" activeColor="bg-indigo-500 text-white" borderColor="border-indigo-500/50" />
-                                                                <PaymentMethodBtn method="Débito" icon="credit_score" label="Cartão Débito" activeColor="bg-blue-500 text-white" borderColor="border-blue-500/50" />
-                                                                <div className="col-span-2">
-                                                                    <PaymentMethodBtn method="Pendente" icon="pending_actions" label="Pagar Depois (Pendente / Fiado)" activeColor="bg-rose-500 text-white" borderColor="border-rose-500/50" />
-                                                                </div>
-                                                            </div>
+                                                    <>
+                                                        {/* Modo Dividido / Único Toggle */}
+                                                        <div className="flex bg-[#111827]/40 border border-white/5 rounded-2xl p-1 mb-4">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setIsSplitPayment(false);
+                                                                    setTransMethod('');
+                                                                    setSplitAmounts({ PIX: '', Dinheiro: '', Crédito: '', Débito: '', Pendente: '' });
+                                                                }}
+                                                                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                                                                    ${!isSplitPayment ? 'bg-[#0f172a] text-cyan-400 border border-white/5 shadow-lg' : 'text-white/40 hover:text-white'}`}
+                                                            >
+                                                                Pagamento Único
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setIsSplitPayment(true);
+                                                                    setTransMethod('Split');
+                                                                    setPaymentDiscountPercent('');
+                                                                    setCashReceived('');
+                                                                    setPendingDueDate('');
+                                                                }}
+                                                                className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all
+                                                                    ${isSplitPayment ? 'bg-[#0f172a] text-cyan-400 border border-white/5 shadow-lg' : 'text-white/40 hover:text-white'}`}
+                                                            >
+                                                                Dividir Pagamento
+                                                            </button>
                                                         </div>
 
-                                                        <button
-                                                            onClick={() => setModalMode('none')}
-                                                            className="w-full py-5 rounded-2xl text-white/30 font-black uppercase tracking-widest text-xs border border-white/10 hover:bg-white/5 hover:text-white transition-all mt-4"
-                                                        >
-                                                            Cancelar Operação
-                                                        </button>
-                                                    </div>
+                                                        {isSplitPayment ? (
+                                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                                 {/* Inputs of Split Amounts */}
+                                                                 <div className="grid grid-cols-2 gap-4">
+                                                                     {/* PIX */}
+                                                                     <div className="space-y-1">
+                                                                         <label className="text-[10px] text-emerald-400 uppercase font-black tracking-widest px-2">Pix</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-emerald-400 text-lg">qr_code_2</span>
+                                                                             <input
+                                                                                 type="number"
+                                                                                 step="0.01"
+                                                                                 placeholder="0.00"
+                                                                                 title="Valor no Pix"
+                                                                                 aria-label="Valor no Pix"
+                                                                                 value={splitAmounts.PIX}
+                                                                                 onChange={e => setSplitAmounts(prev => ({ ...prev, PIX: e.target.value }))}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                             />
+                                                                         </div>
+                                                                     </div>
+
+                                                                     {/* Dinheiro */}
+                                                                     <div className="space-y-1">
+                                                                         <label className="text-[10px] text-amber-400 uppercase font-black tracking-widest px-2">Dinheiro</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-amber-400 text-lg">payments</span>
+                                                                             <input
+                                                                                 type="number"
+                                                                                 step="0.01"
+                                                                                 placeholder="0.00"
+                                                                                 title="Valor em Dinheiro"
+                                                                                 aria-label="Valor em Dinheiro"
+                                                                                 value={splitAmounts.Dinheiro}
+                                                                                 onChange={e => setSplitAmounts(prev => ({ ...prev, Dinheiro: e.target.value }))}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                             />
+                                                                         </div>
+                                                                     </div>
+
+                                                                     {/* Crédito */}
+                                                                     <div className="space-y-1">
+                                                                         <label className="text-[10px] text-indigo-400 uppercase font-black tracking-widest px-2">Cartão Crédito</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-indigo-400 text-lg">credit_card</span>
+                                                                             <input
+                                                                                 type="number"
+                                                                                 step="0.01"
+                                                                                 placeholder="0.00"
+                                                                                 title="Valor no Cartão de Crédito"
+                                                                                 aria-label="Valor no Cartão de Crédito"
+                                                                                 value={splitAmounts.Crédito}
+                                                                                 onChange={e => setSplitAmounts(prev => ({ ...prev, Crédito: e.target.value }))}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                             />
+                                                                         </div>
+                                                                     </div>
+
+                                                                     {/* Débito */}
+                                                                     <div className="space-y-1">
+                                                                         <label className="text-[10px] text-blue-400 uppercase font-black tracking-widest px-2">Cartão Débito</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-blue-400 text-lg">credit_score</span>
+                                                                             <input
+                                                                                 type="number"
+                                                                                 step="0.01"
+                                                                                 placeholder="0.00"
+                                                                                 title="Valor no Cartão de Débito"
+                                                                                 aria-label="Valor no Cartão de Débito"
+                                                                                 value={splitAmounts.Débito}
+                                                                                 onChange={e => setSplitAmounts(prev => ({ ...prev, Débito: e.target.value }))}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                             />
+                                                                         </div>
+                                                                     </div>
+
+                                                                     {/* Pendente */}
+                                                                     <div className="col-span-2 space-y-1">
+                                                                         <label className="text-[10px] text-rose-400 uppercase font-black tracking-widest px-2">Pagar Depois (Pendente / Fiado)</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-rose-400 text-lg">pending_actions</span>
+                                                                             <input
+                                                                                 type="number"
+                                                                                 step="0.01"
+                                                                                 placeholder="0.00"
+                                                                                 title="Valor Pendente"
+                                                                                 aria-label="Valor Pendente"
+                                                                                 value={splitAmounts.Pendente}
+                                                                                 onChange={e => setSplitAmounts(prev => ({ ...prev, Pendente: e.target.value }))}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                             />
+                                                                         </div>
+                                                                     </div>
+                                                                 </div>
+
+                                                                 {/* Condicionais de Dinheiro e Pendente */}
+                                                                 {(parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (
+                                                                     <div className="space-y-1 pl-4 border-l-2 border-amber-500/30 animate-in slide-in-from-top-2 duration-300">
+                                                                         <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Valor Recebido em Dinheiro (Obrigatório)</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-cyan-400 text-lg">payments</span>
+                                                                             <input
+                                                                                 type="number"
+                                                                                 step="0.01"
+                                                                                 placeholder="0.00"
+                                                                                 title="Valor recebido em dinheiro"
+                                                                                 aria-label="Valor recebido em dinheiro"
+                                                                                 value={cashReceived}
+                                                                                 onChange={e => setCashReceived(e.target.value)}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                                 required
+                                                                             />
+                                                                         </div>
+                                                                         {cashReceived && (parseFloat(cashReceived) || 0) >= (parseFloat(splitAmounts.Dinheiro) || 0) && (
+                                                                             <p className="text-xs text-amber-400 font-bold px-2 mt-1">
+                                                                                 Troco: {formatCurrency((parseFloat(cashReceived) || 0) - (parseFloat(splitAmounts.Dinheiro) || 0))}
+                                                                             </p>
+                                                                         )}
+                                                                     </div>
+                                                                 )}
+
+                                                                 {(parseFloat(splitAmounts.Pendente) || 0) > 0 && (
+                                                                     <div className="space-y-1 pl-4 border-l-2 border-rose-500/30 animate-in slide-in-from-top-2 duration-300">
+                                                                         <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Data Prometida para o Pagamento (Obrigatório)</label>
+                                                                         <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                             <span className="material-symbols-outlined text-cyan-400 text-lg">calendar_today</span>
+                                                                             <input
+                                                                                 type="date"
+                                                                                 value={pendingDueDate}
+                                                                                 title="Data Prometida para o Pagamento"
+                                                                                 placeholder="AAAA-MM-DD"
+                                                                                 aria-label="Data Prometida para o Pagamento"
+                                                                                 onChange={e => setPendingDueDate(e.target.value)}
+                                                                                 className="bg-transparent text-white outline-none w-full font-mono text-base font-bold cursor-pointer"
+                                                                                 required
+                                                                             />
+                                                                         </div>
+                                                                     </div>
+                                                                 )}
+
+                                                                 {/* Desconto */}
+                                                                 <div className="space-y-1">
+                                                                     <label className="text-[10px] text-white/30 uppercase font-black tracking-widest px-2">Desconto Opcional (%)</label>
+                                                                     <div className="flex items-center gap-2 bg-[#111827]/40 border border-white/5 rounded-xl p-3 focus-within:border-cyan-500/30 transition-all">
+                                                                         <span className="material-symbols-outlined text-cyan-400 text-lg">percent</span>
+                                                                         <input
+                                                                             type="number"
+                                                                             placeholder="0"
+                                                                             title="Desconto em porcentagem"
+                                                                             aria-label="Desconto em porcentagem"
+                                                                             value={paymentDiscountPercent}
+                                                                             onChange={e => setPaymentDiscountPercent(e.target.value)}
+                                                                             className="bg-transparent text-white outline-none w-full font-mono text-base font-bold"
+                                                                         />
+                                                                     </div>
+                                                                 </div>
+
+                                                                 {/* Manager Auth */}
+                                                                 {needsManagerAuth && (
+                                                                     <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl space-y-3 mt-2 animate-in slide-in-from-top-2 duration-300">
+                                                                         <div className="flex items-center gap-2 text-amber-400">
+                                                                             <span className="material-symbols-outlined text-lg">shield_person</span>
+                                                                             <span className="text-[10px] font-black uppercase tracking-widest">Autorização do Gerente Necessária</span>
+                                                                         </div>
+                                                                         {isDiscountAuthorized ? (
+                                                                             <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3">
+                                                                                 <span className="material-symbols-outlined text-lg">verified</span>
+                                                                                 <span className="text-xs font-bold">Desconto Autorizado por Gerente</span>
+                                                                             </div>
+                                                                         ) : (
+                                                                             <div className="space-y-2">
+                                                                                 <input
+                                                                                     type="email"
+                                                                                     placeholder="E-mail do Gerente"
+                                                                                     title="E-mail do Gerente"
+                                                                                     aria-label="E-mail do Gerente"
+                                                                                     value={managerEmail}
+                                                                                     onChange={e => setManagerEmail(e.target.value)}
+                                                                                     className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
+                                                                                 />
+                                                                                 <input
+                                                                                     type="password"
+                                                                                     placeholder="Senha do Gerente"
+                                                                                     title="PIN do Gerente"
+                                                                                     aria-label="PIN do Gerente"
+                                                                                     value={managerPassword}
+                                                                                     onChange={e => setManagerPassword(e.target.value)}
+                                                                                     className="w-full bg-[#111827]/40 border border-white/5 rounded-xl p-3 text-xs font-bold text-white outline-none focus:border-amber-500/30"
+                                                                                 />
+                                                                                 {authError && (
+                                                                                     <p className="text-red-500 text-[10px] font-bold uppercase tracking-wider">{authError}</p>
+                                                                                 )}
+                                                                                 <button
+                                                                                     type="button"
+                                                                                     onClick={handleValidateManagerAuth}
+                                                                                     disabled={isValidatingAuth || !managerEmail || !managerPassword}
+                                                                                     className="w-full py-2 bg-amber-500 disabled:bg-white/5 disabled:text-white/20 text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-amber-400 transition-all border-none font-sans cursor-pointer"
+                                                                                 >
+                                                                                     {isValidatingAuth ? 'Validando...' : 'Autorizar Desconto'}
+                                                                                 </button>
+                                                                             </div>
+                                                                         )}
+                                                                     </div>
+                                                                 )}
+
+                                                                 {/* Real-time Summary Card */}
+                                                                 <div className="p-6 rounded-3xl bg-[#0f172a] text-white space-y-3 shadow-2xl border border-white/5 relative overflow-hidden group">
+                                                                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16" />
+                                                                     <div className="relative z-10 space-y-2.5">
+                                                                         <div className="flex justify-between items-center text-xs">
+                                                                             <span className="text-white/40 font-black uppercase tracking-widest">Subtotal</span>
+                                                                             <span className="font-bold text-white/80">{formatCurrency(cartItems.reduce((a, b) => a + b.price, 0))}</span>
+                                                                         </div>
+                                                                         {parseFloat(paymentDiscountPercent) > 0 && (
+                                                                             <div className="flex justify-between items-center text-xs">
+                                                                                 <span className="text-emerald-400 font-black uppercase tracking-widest">Desconto</span>
+                                                                                 <span className="font-bold text-emerald-400">-{formatCurrency((cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100)}</span>
+                                                                             </div>
+                                                                         )}
+                                                                         <div className="flex justify-between items-center pt-2 border-t border-white/5 text-sm">
+                                                                             <span className="text-white/40 font-black uppercase tracking-widest">Total Líquido</span>
+                                                                             <span className="font-bold text-white">{formatCurrency(Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100))}</span>
+                                                                         </div>
+                                                                         <div className="flex justify-between items-center text-sm">
+                                                                             <span className="text-white/40 font-black uppercase tracking-widest">Total Informado</span>
+                                                                             <span className="font-bold text-white">{formatCurrency((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))}</span>
+                                                                         </div>
+                                                                         <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                                                                             <span className="text-cyan-400 font-black uppercase tracking-[0.2em] text-[10px]">Diferença</span>
+                                                                             <span className={`text-2xl font-black font-bebas ${Math.abs(
+                                                                                 Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                                 ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                             ) < 0.01 ? 'text-emerald-400' : 'text-amber-500'}`}>
+                                                                                 {Math.abs(
+                                                                                     Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                                     ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                                 ) < 0.01 ? 'R$ 0,00 (Pronto)' : formatCurrency(
+                                                                                     Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                                     ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                                 )}
+                                                                             </span>
+                                                                         </div>
+                                                                     </div>
+                                                                 </div>
+
+                                                                 {/* Action Buttons */}
+                                                                 <div className="flex gap-3 pt-3">
+                                                                     <button
+                                                                         onClick={() => setModalMode('none')}
+                                                                         className="flex-1 py-4 rounded-xl border border-white/10 text-white/40 font-black uppercase tracking-widest text-[10px] hover:bg-white/5 hover:text-white transition-all"
+                                                                     >
+                                                                         Cancelar
+                                                                     </button>
+                                                                     <button
+                                                                         disabled={
+                                                                             isProcessingPayment ||
+                                                                             Math.abs(
+                                                                                 Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                                 ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                             ) >= 0.01 ||
+                                                                             ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
+                                                                             ((parseFloat(splitAmounts.Pendente) || 0) > 0 && !pendingDueDate) ||
+                                                                             ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
+                                                                             (needsManagerAuth && !isDiscountAuthorized)
+                                                                         }
+                                                                         onClick={handleProcessPayment}
+                                                                         className={`flex-[2] py-4 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all 
+                                                                             ${(
+                                                                                 isProcessingPayment ||
+                                                                                 Math.abs(
+                                                                                     Math.max(0, cartItems.reduce((a, b) => a + b.price, 0) - (cartItems.reduce((a, b) => a + b.price, 0) * (parseFloat(paymentDiscountPercent) || 0)) / 100) -
+                                                                                     ((parseFloat(splitAmounts.PIX) || 0) + (parseFloat(splitAmounts.Dinheiro) || 0) + (parseFloat(splitAmounts.Crédito) || 0) + (parseFloat(splitAmounts.Débito) || 0) + (parseFloat(splitAmounts.Pendente) || 0))
+                                                                                 ) >= 0.01 ||
+                                                                                 ((parseFloat(splitAmounts.Dinheiro) || 0) > 0 && (!cashReceived || (parseFloat(cashReceived) || 0) < (parseFloat(splitAmounts.Dinheiro) || 0))) ||
+                                                                                 ((parseFloat(splitAmounts.Pendente) || 0) > 0 && !pendingDueDate) ||
+                                                                                 ((parseFloat(splitAmounts.Pendente) || 0) > 0 && (!selectedClient || !dbClients.some(c => c.name === selectedClient?.name))) ||
+                                                                                 (needsManagerAuth && !isDiscountAuthorized)
+                                                                             )
+                                                                                 ? 'bg-white/5 text-white/10 cursor-not-allowed opacity-60 shadow-none'
+                                                                                 : 'bg-cyan-500 text-slate-900 hover:bg-cyan-400 shadow-lg shadow-cyan-500/20 active:scale-95'}`}
+                                                                     >
+                                                                         {isProcessingPayment ? 'Processando...' : 'Finalizar e Emitir'}
+                                                                     </button>
+                                                                 </div>
+                                                            </div>
+                                                        ) : (
+                                                            /* Single Payment Method Options Selection */
+                                                            <div className="space-y-6 animate-in fade-in duration-300">
+                                                                <div className="space-y-3">
+                                                                    <label className="text-[10px] text-slate-400 uppercase font-black tracking-[0.2em] block">Forma de Pagamento</label>
+                                                                    <div className="grid grid-cols-2 gap-3">
+                                                                        <PaymentMethodBtn method="PIX" icon="qr_code_2" label="Pix" activeColor="bg-emerald-500 text-white" borderColor="border-emerald-500/50" />
+                                                                        <PaymentMethodBtn method="Dinheiro" icon="payments" label="Dinheiro" activeColor="bg-amber-500 text-white" borderColor="border-amber-500/50" />
+                                                                        <PaymentMethodBtn method="Crédito" icon="credit_card" label="Cartão Crédito" activeColor="bg-indigo-500 text-white" borderColor="border-indigo-500/50" />
+                                                                        <PaymentMethodBtn method="Débito" icon="credit_score" label="Cartão Débito" activeColor="bg-blue-500 text-white" borderColor="border-blue-500/50" />
+                                                                        <div className="col-span-2">
+                                                                            <PaymentMethodBtn method="Pendente" icon="pending_actions" label="Pagar Depois (Pendente / Fiado)" activeColor="bg-rose-500 text-white" borderColor="border-rose-500/50" />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+
+                                                                <button
+                                                                    onClick={() => setModalMode('none')}
+                                                                    className="w-full py-5 rounded-2xl text-white/30 font-black uppercase tracking-widest text-xs border border-white/10 hover:bg-white/5 hover:text-white transition-all mt-4"
+                                                                >
+                                                                    Cancelar Operação
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         ) : (

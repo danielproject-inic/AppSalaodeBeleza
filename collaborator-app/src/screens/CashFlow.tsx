@@ -2158,7 +2158,7 @@ const CashFlow = () => {
                                                                     onClick={() => setModalMode('none')}
                                                                     className="w-full py-5 rounded-2xl text-white/30 font-black uppercase tracking-widest text-xs border border-white/10 hover:bg-white/5 hover:text-white transition-all mt-4"
                                                                 >
-                                                                    Cancelar Operação
+                                                                 Cancelar Operação
                                                                 </button>
                                                             </div>
                                                         )}
@@ -2166,6 +2166,9 @@ const CashFlow = () => {
                                                 )}
                                             </div>
                                         ) : (
+                                            /* Confirmation Stage */
+                                            <div className="space-y-4 animate-in slide-in-from-bottom-4 duration-400">
+                                                <div className="p-6 bg-[#0f172a]/40 rounded-2xl border border-white/5 flex flex-col items-center relative overflow-hidden">
                                                     <div className="absolute top-0 left-0 w-full h-1 bg-cyan-500/50" />
                                                     <div className="size-14 rounded-2xl bg-white/5 border border-white/10 text-white flex items-center justify-center mb-3 shadow-lg ">
                                                         <span className="material-symbols-outlined text-3xl text-cyan-400">task_alt</span>

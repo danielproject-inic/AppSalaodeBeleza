@@ -534,7 +534,12 @@ const CashFlow = () => {
     const handleProcessPayment = async () => {
         if (isProcessingPayment) return;
 
-        if (!selectedClient || !dbClients.some(c => c.id === selectedClient?.id)) {
+        const hasValidClient = selectedClient && (
+            dbClients.some(c => c.id === selectedClient?.id) ||
+            dbClients.some(c => c.name === selectedClient?.name)
+        );
+
+        if (!hasValidClient) {
             alert('Por favor, selecione um cliente cadastrado antes de finalizar a venda.');
             setIsProcessingPayment(false);
             return;

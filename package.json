@@ -19,6 +19,13 @@
     "directories": {
       "output": "dist-electron"
     },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "danielproject-inic",
+        "repo": "AppSalaodeBeleza"
+      }
+    ],
     "win": {
       "icon": "build/icon.ico",
       "target": [
@@ -38,6 +45,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.1",
+    "electron-updater": "^6.3.9",
     "lucide-react": "^1.7.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",

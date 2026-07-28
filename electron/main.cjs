@@ -1,4 +1,5 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 
 // CORREÇÃO CRÍTICA: Desabilitar GPU para evitar crash do processo GPU
@@ -49,6 +50,35 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+
+  // Configuração do Auto-Updater
+  autoUpdater.autoDownload = true; // Baixa automaticamente quando encontra
+  autoUpdater.autoInstallOnAppQuit = true; // Instala quando o app fecha, caso o usuário não clique em atualizar agora
+
+  // Quando uma atualização for baixada
+  autoUpdater.on('update-downloaded', (info) => {
+    const dialogOpts = {
+      type: 'info',
+      buttons: ['Atualizar Agora', 'Cancelar'],
+      title: 'Atualização Disponível',
+      message: 'Uma nova versão do Salon Suite Pro está disponível!',
+      detail: 'A atualização foi baixada e está pronta para ser instalada. Deseja reiniciar e instalar agora?'
+    };
+
+    dialog.showMessageBox(dialogOpts).then((returnValue) => {
+      if (returnValue.response === 0) {
+        // Usuário clicou em "Atualizar Agora"
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+
+  // Apenas tentar verificar se não for ambiente de desenvolvimento
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates().catch(err => {
+      console.log('Não foi possível verificar atualizações:', err);
+    });
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

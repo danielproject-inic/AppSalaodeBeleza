@@ -5,7 +5,7 @@ import { Database } from '../lib/database.types';
 type Transaction = Database['public']['Tables']['transactions']['Row'];
 type TransactionInsert = Database['public']['Tables']['transactions']['Insert'];
 
-export const useTransactions = () => {
+export const useTransactions = (limitCount: number = 500) => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -17,7 +17,7 @@ export const useTransactions = () => {
                 .from('transactions')
                 .select('*')
                 .order('created_at', { ascending: false })
-                .limit(1000);
+                .limit(limitCount);
 
             if (error) throw error;
             setTransactions(data || []);
@@ -82,15 +82,16 @@ export const useTransactions = () => {
     useEffect(() => {
         fetchTransactions();
 
-        const subscription = supabase
-            .channel('public:transactions')
+        const channelId = `transactions_channel_${Math.random().toString(36).substring(2, 9)}`;
+        const channel = supabase
+            .channel(channelId)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, () => {
                 fetchTransactions();
             })
             .subscribe();
 
         return () => {
-            supabase.removeChannel(subscription);
+            supabase.removeChannel(channel);
         };
     }, []);
 

@@ -217,8 +217,9 @@ const CashFlow = () => {
         }
         setIsValidatingAuth(true);
         setAuthError('');
+        let tempSupabase: ReturnType<typeof createClient> | null = null;
         try {
-            const tempSupabase = createClient(
+            tempSupabase = createClient(
                 import.meta.env.VITE_SUPABASE_URL || '',
                 import.meta.env.VITE_SUPABASE_ANON_KEY || '',
                 { auth: { persistSession: false } }
@@ -251,6 +252,9 @@ const CashFlow = () => {
             setAuthError('Erro ao validar: ' + err.message);
             setIsDiscountAuthorized(false);
         } finally {
+            if (tempSupabase) {
+                await tempSupabase.auth.signOut().catch(() => {});
+            }
             setIsValidatingAuth(false);
         }
     };

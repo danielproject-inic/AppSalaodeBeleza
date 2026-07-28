@@ -92,15 +92,16 @@ export const useCommissions = (filterMonth?: string, professionalId?: string) =>
         };
         fetchBatches();
 
-        const subscription = supabase
-            .channel('public:commission_batches')
+        const channelId = `commission_batches_channel_${Math.random().toString(36).substring(2, 9)}`;
+        const channel = supabase
+            .channel(channelId)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'commission_batches' }, () => {
                 fetchBatches();
             })
             .subscribe();
 
         return () => {
-            supabase.removeChannel(subscription);
+            supabase.removeChannel(channel);
         };
     }, [professionalId]);
 

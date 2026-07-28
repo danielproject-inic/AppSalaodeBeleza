@@ -1,23 +1,14 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useCommissions } from '../hooks/useCommissions';
-import { useServices } from '../hooks/useServices';
-import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
-import './M10Canvas.css';
+import SalonComissoesDashboard from '../../screens/SalonComissoesDashboard';
 
-const SalonComissoesDashboard = () => {
-  const { role, professionalId, hasAccess, loading: userLoading } = useCurrentUserRef();
-  const canViewAll = role === 'admin' || role === 'manager' || hasAccess('team_view_all');
-
-  const {
-    commissions,
-    professionalsStats,
-    simulationData,
-    pendingApprovals,
+export default SalonComissoesDashboard;
+/* Archived duplicate implementation - re-exported from shared screens */
+/*
     executeSmartClosing,
     confirmPayment,
     batches,
     loading: commissionsLoading
   } = useCommissions(undefined, canViewAll ? undefined : (professionalId || undefined));
+*/
 
   const { services, loading: servicesLoading } = useServices();
 

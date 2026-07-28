@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './screens/Auth';
 import SettingsDashboard from './screens/SettingsDashboard';
@@ -11,14 +11,15 @@ import ProductsCatalog from './screens/ProductsCatalog';
 import DashboardOverview from './screens/DashboardOverview';
 import SystemPreferences from './screens/SystemPreferences';
 import NotificationSettings from './screens/NotificationSettings';
-import CashFlow from './screens/CashFlow';
 import ClientList from './screens/ClientList';
 import CommissionsDetail from './screens/CommissionsDetail';
-import SalonComissoesDashboard from './screens/SalonComissoesDashboard';
-import DetailedAgenda from './screens/DetailedAgenda';
 import UsersPermissions from './screens/UsersPermissions';
 import Onboarding from './screens/Onboarding';
 import CashPinSetup from './components/CashPinSetup';
+
+import CashFlow from './screens/CashFlow';
+import DetailedAgenda from './screens/DetailedAgenda';
+import SalonComissoesDashboard from './screens/SalonComissoesDashboard';
 import CashReports from './components/CashReports';
 
 import { useCurrentTime } from './hooks/useCurrentTime';
@@ -312,9 +313,14 @@ const App = () => {
       {/* Main Content Area - Full Width with Max Constraint */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative ref-body">
         <div className="flex-1 w-full h-full overflow-y-auto relative" id="main-scroll-container">
-          <div className="h-full w-full max-w-[1920px] mx-auto bg-transparent">
-            {renderScreen()}
-          </div>
+            <Suspense fallback={
+              <div className="flex items-center justify-center p-16 text-white/40 font-medium animate-pulse gap-3">
+                <span className="material-symbols-outlined text-4xl animate-spin text-cyan-400">sync</span>
+                Carregando módulo...
+              </div>
+            }>
+              {renderScreen()}
+            </Suspense>
         </div>
       </div>
     </div>

@@ -124,8 +124,9 @@ export const useCashSessions = () => {
 
         loadInitialData();
 
-        const subscription = supabase
-            .channel('public:cash_sessions')
+        const channelId = `cash_sessions_channel_${Math.random().toString(36).substring(2, 9)}`;
+        const channel = supabase
+            .channel(channelId)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'cash_sessions' }, () => {
                 fetchActiveSession();
                 fetchSessionsHistory();
@@ -133,7 +134,7 @@ export const useCashSessions = () => {
             .subscribe();
 
         return () => {
-            supabase.removeChannel(subscription);
+            supabase.removeChannel(channel);
         };
     }, []);
 

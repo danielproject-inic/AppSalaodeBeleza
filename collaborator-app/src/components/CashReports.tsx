@@ -1,35 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { supabase } from '../lib/supabase';
-import { Database } from '../lib/database.types';
+import CashReports from '../../components/CashReports';
 
-type CashSession = Database['public']['Tables']['cash_sessions']['Row'] & {
-    opened_by_profile?: { full_name: string } | null;
-    closed_by_profile?: { full_name: string } | null;
-};
-type Transaction = Database['public']['Tables']['transactions']['Row'] & {
-    client?: { name: string } | null;
-    professional?: { name: string } | null;
-};
-
-const CashReports = () => {
-    const getTodayDate = () => {
-        const d = new Date();
-        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    };
-
-    const formatCurrency = (val: number) => {
-        return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-    };
-
-    // --- State Filters ---
-    const [periodType, setPeriodType] = useState<'diario' | 'mensal' | 'personalizado'>('diario');
-    const [diarioDate, setDiarioDate] = useState(getTodayDate());
-    const [mensalMonth, setMensalMonth] = useState<number>(new Date().getMonth() + 1);
+export default CashReports;
+/* Archived duplicate implementation - re-exported from shared components */
+/*
     const [mensalYear, setMensalYear] = useState<number>(new Date().getFullYear());
     const [personalizadoType, setPersonalizadoType] = useState<'intervalo' | 'ano'>('intervalo');
     const [personalizadoStartDate, setPersonalizadoStartDate] = useState(getTodayDate());
     const [personalizadoEndDate, setPersonalizadoEndDate] = useState(getTodayDate());
     const [personalizadoYear, setPersonalizadoYear] = useState<number>(new Date().getFullYear());
+*/
 
     // --- Fetching State ---
     const [sessions, setSessions] = useState<CashSession[]>([]);
@@ -478,16 +457,6 @@ const CashReports = () => {
                                 />
                             </div>
                         </>
-                    )}
-
-                    {periodType === 'personalizado' && (
-                        <>
-                            <div className="flex flex-col gap-1.5 text-left">
-                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Tipo Personalizado</label>
-                                <select
-                                    value={personalizadoType}
-                                    title="Tipo Personalizado"
-                                    aria-label="Tipo Personalizado"
                                     onChange={(e) => setPersonalizadoType(e.target.value as any)}
                                     className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                 >

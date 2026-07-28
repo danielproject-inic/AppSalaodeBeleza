@@ -66,6 +66,8 @@ export interface Professional {
     color: string;
 }
 
+export * from '../../../hooks/useCommissions';
+
 export const useCommissions = (filterMonth?: string, professionalId?: string) => {
     const { transactions, loading: loadingTrans, addTransaction } = useTransactions();
     const { professionals, loading: loadingPros } = useProfessionals();

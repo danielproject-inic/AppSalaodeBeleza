@@ -49,16 +49,16 @@ export const useAppointments = (startDate?: string, endDate?: string, profession
     useEffect(() => {
         fetchAppointments();
 
-        // Subscribe to changes
-        const subscription = supabase
-            .channel('appointments_changes')
+        const channelId = `appointments_channel_${Math.random().toString(36).substring(2, 9)}`;
+        const channel = supabase
+            .channel(channelId)
             .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
                 fetchAppointments();
             })
             .subscribe();
 
         return () => {
-            subscription.unsubscribe();
+            supabase.removeChannel(channel);
         };
     }, [startDate, endDate, professionalId]);
 

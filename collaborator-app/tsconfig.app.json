@@ -19,6 +19,12 @@
     "typeRoots": ["./node_modules/@types"],
     "types": ["react", "react-dom"],
 
+    /* Paths */
+    "baseUrl": ".",
+    "paths": {
+      "@hooks/*": ["../hooks/*"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": false,

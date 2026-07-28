@@ -1,21 +1,13 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { createPortal } from 'react-dom';
-import AppointmentCard from '../components/AppointmentCard';
-import { useCurrentTime } from '../hooks/useCurrentTime';
-import { useAppointments } from '../hooks/useAppointments';
-import { useServices } from '../hooks/useServices';
-import { useProfessionals } from '../hooks/useProfessionals';
-import { useClients } from '../hooks/useClients';
-import { useCurrentUserRef } from '../hooks/useCurrentUserRef';
-import { useTransactions } from '../hooks/useTransactions';
-import { useSalonConfig } from '../hooks/useSalonConfig';
-import { Database } from '../lib/database.types';
-import './M10Canvas.css';
-import './M10Agenda.css';
+import DetailedAgenda from '../../screens/DetailedAgenda';
 
+export default DetailedAgenda;
+
+/* Archived duplicate implementation - re-exported from shared screens */
+/*
 interface Client {
- id: string;
- name: string;
+  id: string;
+  name: string;
+*/
  avatar?: string;
  phone: string;
 }

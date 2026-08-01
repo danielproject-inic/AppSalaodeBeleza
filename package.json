@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "electron:dev": "electron .",
     "electron:test": "electron . --disable-gpu --in-process-gpu --no-sandbox",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
     "electron:build": "node -e \"try{require('child_process').execSync('taskkill /F /IM \\\"Salon Suite Pro.exe\\\" /T')}catch(e){}\" && vite build && electron-builder"
   },
   "build": {
@@ -44,6 +46,8 @@
     }
   },
   "dependencies": {
+    "@capacitor/android": "^7.0.1",
+    "@capacitor/core": "^7.0.1",
     "@supabase/supabase-js": "^2.90.1",
     "electron-updater": "^6.3.9",
     "lucide-react": "^1.7.0",
@@ -52,6 +56,7 @@
     "vanilla-tilt": "^1.8.1"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.0.1",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",

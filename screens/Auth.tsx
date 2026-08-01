@@ -88,11 +88,11 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
             <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#b45309]/10 rounded-full blur-[120px] animate-pulse"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-500/5 rounded-full blur-[120px] animate-pulse delay-700"></div>
 
-            <div className="w-full max-w-md px-6 relative z-10">
-                <div className="bg-[#1f2937]/50 backdrop-blur-xl border border-white/5 rounded-[32px] p-10 shadow-2xl relative group">
+            <div className="w-full max-w-md px-4 lg:px-6 relative z-10">
+                <div className="bg-[#1f2937]/50 backdrop-blur-xl border border-white/5 rounded-[24px] lg:rounded-[32px] p-6 lg:p-10 shadow-2xl relative group">
                     <div className="relative z-20">
                         {/* Header */}
-                        <div className="text-center mb-10">
+                        <div className="text-center mb-6 lg:mb-10">
                             <h1 className="text-3xl font-black text-white mb-2 leading-tight tracking-tight min-h-[40px]">
                                 {isRegistering ? 'Criar Conta' : 'App Salão de Beleza'}
                             </h1>
@@ -122,7 +122,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="seu@exemplo.com"
-                                        className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-12 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20"
+                                        className="w-full h-12 lg:h-14 bg-black/20 border border-white/10 rounded-xl lg:rounded-2xl pl-10 lg:pl-12 pr-10 lg:pr-12 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20 text-sm lg:text-base"
                                         required
                                     />
                                     {savedEmails.length > 0 && (
@@ -185,7 +185,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
                                         placeholder="••••••••"
-                                        className="w-full h-14 bg-black/20 border border-white/10 rounded-2xl pl-12 pr-12 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20"
+                                        className="w-full h-12 lg:h-14 bg-black/20 border border-white/10 rounded-xl lg:rounded-2xl pl-10 lg:pl-12 pr-10 lg:pr-12 text-white focus:ring-2 focus:ring-[#b45309]/50 focus:border-[#b45309] outline-none transition-all duration-300 font-medium placeholder:text-white/20 text-sm lg:text-base"
                                         required
                                     />
                                     <button
@@ -235,7 +235,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full h-14 rounded-2xl bg-gradient-to-r from-[#b45309] to-[#d97706] text-white font-black uppercase tracking-widest shadow-[0_0_20px_rgba(180,83,9,0.3)] hover:shadow-[0_0_30px_rgba(180,83,9,0.5)] active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-70 disabled:grayscale"
+                                className="w-full h-12 lg:h-14 rounded-xl lg:rounded-2xl bg-gradient-to-r from-[#b45309] to-[#d97706] text-white font-black uppercase tracking-widest shadow-[0_0_20px_rgba(180,83,9,0.3)] hover:shadow-[0_0_30px_rgba(180,83,9,0.5)] active:scale-[0.98] transition-all flex items-center justify-center disabled:opacity-70 disabled:grayscale text-sm lg:text-base"
                             >
                                 {loading ? (
                                     <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>

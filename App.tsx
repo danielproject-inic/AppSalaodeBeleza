@@ -198,16 +198,16 @@ const App = () => {
     <div className="flex flex-col h-screen w-full bg-[#0f172a] font-display overflow-hidden text-[#f1f5f9]">
 
       {/* 1. Global Header - Exact Reference 1 Tone */}
-      <header className="flex-none bg-[#0f172a] border-b border-white/5 z-50 px-6 lg:px-10 h-28 flex items-center justify-between relative transition-all">
-        <div className="flex items-center gap-8">
-          <div className="h-20 w-20 rounded-2xl p-0.5 shadow-sm border border-cyan-100 flex items-center justify-center bg-white/5 overflow-hidden">
-            <div className="h-full w-full rounded-2xl bg-cover bg-center flex items-center justify-center" style={{ backgroundImage: config?.logo_url ? `url("${config.logo_url}")` : undefined }}>
-              {!config?.logo_url && <span className="material-symbols-outlined text-white/20 text-4xl">store</span>}
+      <header className="flex-none bg-[#0f172a] border-b border-white/5 z-50 px-4 lg:px-10 h-20 lg:h-28 flex items-center justify-between relative transition-all">
+        <div className="flex items-center gap-3 lg:gap-8">
+          <div className="h-12 w-12 lg:h-20 lg:w-20 rounded-xl lg:rounded-2xl p-0.5 shadow-sm border border-cyan-100 flex items-center justify-center bg-white/5 overflow-hidden">
+            <div className="h-full w-full rounded-xl lg:rounded-2xl bg-cover bg-center flex items-center justify-center" style={{ backgroundImage: config?.logo_url ? `url("${config.logo_url}")` : undefined }}>
+              {!config?.logo_url && <span className="material-symbols-outlined text-white/20 text-2xl lg:text-4xl">store</span>}
             </div>
           </div>
           <div className="flex flex-col justify-center h-full text-white">
-            <h1 className="text-2xl font-black leading-tight tracking-tight">{config?.name || ''}</h1>
-            <span className="text-xs font-bold text-[#b87333] tracking-[0.2em] uppercase mt-1">{config?.phone || ''}</span>
+            <h1 className="text-lg lg:text-2xl font-black leading-tight tracking-tight max-w-[150px] lg:max-w-none truncate">{config?.name || ''}</h1>
+            <span className="text-[10px] lg:text-xs font-bold text-[#b87333] tracking-[0.2em] uppercase mt-0.5 lg:mt-1">{config?.phone || ''}</span>
           </div>
         </div>
         <div className="flex items-center gap-8">
@@ -221,14 +221,14 @@ const App = () => {
               {formattedDate}
             </div>
           </div>
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-3 lg:gap-5">
             <div className="group relative">
-              <div className="h-12 w-12 rounded-2xl border-2 border-transparent hover:border-[#b87333] cursor-pointer transition-all p-0.5 bg-white/5 overflow-hidden">
+              <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-xl lg:rounded-2xl border-2 border-transparent hover:border-[#b87333] cursor-pointer transition-all p-0.5 bg-white/5 overflow-hidden">
                 {profile?.avatar_url ? (
-                  <div className="h-full w-full rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${profile.avatar_url}")` }}></div>
+                  <div className="h-full w-full rounded-xl lg:rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${profile.avatar_url}")` }}></div>
                 ) : (
-                  <div className="h-full w-full rounded-2xl flex items-center justify-center bg-[#1e293b] text-white font-bold text-lg uppercase">
-                    {profile?.full_name?.charAt(0) || <span className="material-symbols-outlined">person</span>}
+                  <div className="h-full w-full rounded-xl lg:rounded-2xl flex items-center justify-center bg-[#1e293b] text-white font-bold text-base lg:text-lg uppercase">
+                    {profile?.full_name?.charAt(0) || <span className="material-symbols-outlined text-[20px]">person</span>}
                   </div>
                 )}
               </div>
@@ -253,14 +253,14 @@ const App = () => {
 
       {/* 2. Optimized Floating Navbar — Reference 1 Parity */}
       <div 
-        className="flex-none z-40 flex justify-center py-4 px-2 lg:px-8 bg-transparent pointer-events-none sticky top-0"
+        className="flex-none z-40 flex justify-center py-2 lg:py-4 px-0 lg:px-8 bg-[#0f172a] lg:bg-transparent pointer-events-none sticky top-0 order-3 lg:order-2 border-t border-white/5 lg:border-t-0 pb-[env(safe-area-inset-bottom)]"
         style={{ 
           width: 'calc(100% - var(--scrollbar-width, 0px))',
           marginRight: 'var(--scrollbar-width, 0px)' 
         }}
       >
         <div className="pointer-events-auto relative w-full max-w-[1600px]">
-          <nav className="bg-[#1f2937]/90 backdrop-blur-xl border border-white/5 rounded-xl px-4 py-2.5 flex items-center justify-center gap-1 overflow-x-auto scrollbar-hide w-full shadow-2xl">
+          <nav className="bg-[#1f2937]/90 lg:backdrop-blur-xl lg:border border-white/5 lg:rounded-xl px-2 lg:px-4 py-2 lg:py-2.5 flex items-center justify-start lg:justify-center gap-1 overflow-x-auto scrollbar-hide w-full shadow-2xl">
               {menuItems.map((item) => {
                 const isActive = currentScreen === item.id;
                 return (
@@ -311,7 +311,7 @@ const App = () => {
       </div>
 
       {/* Main Content Area - Full Width with Max Constraint */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative ref-body">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative ref-body order-2 lg:order-3">
         <div className="flex-1 w-full h-full overflow-y-auto relative" id="main-scroll-container">
             <Suspense fallback={
               <div className="flex items-center justify-center p-16 text-white/40 font-medium animate-pulse gap-3">

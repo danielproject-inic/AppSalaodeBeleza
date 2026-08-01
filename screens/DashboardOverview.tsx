@@ -722,7 +722,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                     <div className="relative flex items-center justify-start h-10 px-4 bg-[#1f2937]/50 rounded-t-xl border-b border-white/5 z-10">
                         <h2 className="relative text-[11px] font-black text-white/40 uppercase tracking-[0.3em]">RESUMO DE HOJE</h2>
                     </div>
-                    <div className="px-6 pt-6 pb-6 grid grid-cols-4 gap-6">
+                    <div className="px-4 lg:px-6 pt-4 lg:pt-6 pb-4 lg:pb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
                         <div className="bg-[#1f2937] p-5 rounded-2xl border border-white/5 hover:border-white/10 transition-all flex flex-col items-center">
                             <div className="w-12 h-12 rounded-xl bg-[#b45309]/10 flex items-center justify-center mb-3">
                                 <span className="material-symbols-outlined text-[#b45309] text-2xl">trending_up</span>
@@ -768,7 +768,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                     </div>
                 </section>
 
-                <div className="grid grid-cols-[1.4fr_1fr] gap-4 items-stretch min-h-[400px]">
+                <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-stretch min-h-[400px]">
                     <div className="flex flex-col gap-3 h-full">
                         <div className="bg-[#111827] border border-white/5 rounded-2xl p-1.5 flex flex-col h-full shadow-xl">
                             <div className="relative flex items-center justify-start h-10 px-4 bg-[#1f2937]/50 rounded-t-xl border-b border-white/5 z-10">
@@ -837,7 +837,7 @@ const DashboardOverview: React.FC<DashboardOverviewProps> = ({ onNavigate }) => 
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-[1.1fr_0.9fr] gap-3 flex-1">
+                                <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-3 flex-1">
                                     <div className="ref-card flex flex-col p-2 pb-1.5 relative overflow-hidden group/chart">
                                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
                                         <div className="flex items-center gap-2 mb-3 px-1">

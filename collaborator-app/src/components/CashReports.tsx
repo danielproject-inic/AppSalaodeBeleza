@@ -457,6 +457,14 @@ export default CashReports;
                                 />
                             </div>
                         </>
+                    )}
+
+                    {periodType === 'personalizado' && (
+                        <>
+                            <div className="flex flex-col gap-1.5 text-left">
+                                <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Tipo</label>
+                                <select
+                                    value={personalizadoType}
                                     onChange={(e) => setPersonalizadoType(e.target.value as any)}
                                     className="bg-[#0f172a]/60 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#b45309]"
                                 >

@@ -3,15 +3,6 @@ import DetailedAgenda from '../../screens/DetailedAgenda';
 export default DetailedAgenda;
 
 /* Archived duplicate implementation - re-exported from shared screens */
-/*
-interface Client {
-  id: string;
-  name: string;
-*/
- avatar?: string;
- phone: string;
-}
-
 interface Professional {
  id: string;
  name: string;

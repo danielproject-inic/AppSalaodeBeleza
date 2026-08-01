@@ -1,3 +1,3 @@
-import DetailedAgenda from '../../screens/DetailedAgenda';
+import DetailedAgenda from '../../../screens/DetailedAgenda';
 
 export default DetailedAgenda;

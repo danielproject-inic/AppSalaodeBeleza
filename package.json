@@ -12,6 +12,7 @@
     "electron:test": "electron . --disable-gpu --in-process-gpu --no-sandbox",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
+    "test": "vitest run",
     "electron:build": "node -e \"try{require('child_process').execSync('taskkill /F /IM \\\"Salon Suite Pro.exe\\\" /T')}catch(e){}\" && vite build && electron-builder"
   },
   "build": {
@@ -64,6 +65,7 @@
     "electron": "^33.0.0",
     "electron-builder": "^25.1.8",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^3.0.0"
   }
 }

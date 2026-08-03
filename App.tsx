@@ -2,30 +2,30 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './screens/Auth';
-import SettingsDashboard from './screens/SettingsDashboard';
-import Integrations from './screens/Integrations';
-import ServicesCatalog from './screens/ServicesCatalog';
-import TeamManagement from './screens/TeamManagement';
-import SalonData from './screens/SalonData';
-import ProductsCatalog from './screens/ProductsCatalog';
-import DashboardOverview from './screens/DashboardOverview';
-import SystemPreferences from './screens/SystemPreferences';
-import NotificationSettings from './screens/NotificationSettings';
-import ClientList from './screens/ClientList';
-import CommissionsDetail from './screens/CommissionsDetail';
-import UsersPermissions from './screens/UsersPermissions';
-import Onboarding from './screens/Onboarding';
-import CashPinSetup from './components/CashPinSetup';
-
-import CashFlow from './screens/CashFlow';
-import DetailedAgenda from './screens/DetailedAgenda';
-import SalonComissoesDashboard from './screens/SalonComissoesDashboard';
-import CashReports from './components/CashReports';
-
 import { useCurrentTime } from './hooks/useCurrentTime';
 import { useSalonConfig } from './hooks/useSalonConfig';
 import { useCurrentUserRef, ModuleKey } from './hooks/useCurrentUserRef';
 import { useAutoLogout } from './hooks/useAutoLogout';
+
+// Lazy loading screens for code-splitting and faster initial page loads
+const SettingsDashboard = lazy(() => import('./screens/SettingsDashboard'));
+const Integrations = lazy(() => import('./screens/Integrations'));
+const ServicesCatalog = lazy(() => import('./screens/ServicesCatalog'));
+const TeamManagement = lazy(() => import('./screens/TeamManagement'));
+const SalonData = lazy(() => import('./screens/SalonData'));
+const ProductsCatalog = lazy(() => import('./screens/ProductsCatalog'));
+const DashboardOverview = lazy(() => import('./screens/DashboardOverview'));
+const SystemPreferences = lazy(() => import('./screens/SystemPreferences'));
+const NotificationSettings = lazy(() => import('./screens/NotificationSettings'));
+const ClientList = lazy(() => import('./screens/ClientList'));
+const CommissionsDetail = lazy(() => import('./screens/CommissionsDetail'));
+const UsersPermissions = lazy(() => import('./screens/UsersPermissions'));
+const Onboarding = lazy(() => import('./screens/Onboarding'));
+const CashPinSetup = lazy(() => import('./components/CashPinSetup'));
+const CashFlow = lazy(() => import('./screens/CashFlow'));
+const DetailedAgenda = lazy(() => import('./screens/DetailedAgenda'));
+const SalonComissoesDashboard = lazy(() => import('./screens/SalonComissoesDashboard'));
+const CashReports = lazy(() => import('./components/CashReports'));
 
 // Supabase state is now handled internally by child components via hooks
 const App = () => {
@@ -135,24 +135,35 @@ const App = () => {
       </div>
     );
 
-    switch (currentScreen) {
-      case 'settings': return hasAccess('settings_view') ? <SettingsDashboard onNavigate={setCurrentScreen} /> : <Unauthorized />;
-      case 'integrations': return hasAccess('settings_view') ? <Integrations /> : <Unauthorized />;
-      case 'services': return hasAccess('services_view') ? <ServicesCatalog /> : <Unauthorized />;
-      case 'team': return hasAccess('team_navbar_view') ? <TeamManagement currentProfileId={professionalId ?? undefined} hasAccess={hasAccess} /> : <Unauthorized />;
-      case 'salondata': return hasAccess('settings_view') ? <SalonData /> : <Unauthorized />;
-      case 'products': return hasAccess('products_view') ? <ProductsCatalog /> : <Unauthorized />;
-      case 'overview': return hasAccess('dashboard_view') ? <DashboardOverview onNavigate={setCurrentScreen} /> : <Unauthorized />;
-      case 'preferences': return hasAccess('settings_view') ? <SystemPreferences /> : <Unauthorized />;
-      case 'notifications': return hasAccess('settings_view') ? <NotificationSettings /> : <Unauthorized />;
-      case 'cashflow': return hasAccess('cashflow_view') ? <CashFlow /> : <Unauthorized />;
-      case 'reports': return hasAccess('settings_view') ? <CashReports /> : <Unauthorized />;
-      case 'clients': return hasAccess('clients_view') ? <ClientList /> : <Unauthorized />;
-      case 'commissions': return hasAccess('commissions_view') ? <SalonComissoesDashboard /> : <Unauthorized />;
-      case 'agenda': return hasAccess('agenda_view') ? <DetailedAgenda /> : <Unauthorized />;
-      case 'users': return hasAccess('settings_view') ? <UsersPermissions /> : <Unauthorized />; // Users mgmt usually part of settings/admin
-      default: return <DashboardOverview />;
-    }
+    return (
+      <Suspense fallback={
+        <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-300">
+          <div className="size-12 rounded-full border-4 border-[#d9a821]/20 border-t-[#06b6d4] animate-spin mb-4"></div>
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Carregando modulo...</p>
+        </div>
+      }>
+        {(() => {
+          switch (currentScreen) {
+            case 'settings': return hasAccess('settings_view') ? <SettingsDashboard onNavigate={setCurrentScreen} /> : <Unauthorized />;
+            case 'integrations': return hasAccess('settings_view') ? <Integrations /> : <Unauthorized />;
+            case 'services': return hasAccess('services_view') ? <ServicesCatalog /> : <Unauthorized />;
+            case 'team': return hasAccess('team_navbar_view') ? <TeamManagement currentProfileId={professionalId ?? undefined} hasAccess={hasAccess} /> : <Unauthorized />;
+            case 'salondata': return hasAccess('settings_view') ? <SalonData /> : <Unauthorized />;
+            case 'products': return hasAccess('products_view') ? <ProductsCatalog /> : <Unauthorized />;
+            case 'overview': return hasAccess('dashboard_view') ? <DashboardOverview onNavigate={setCurrentScreen} /> : <Unauthorized />;
+            case 'preferences': return hasAccess('settings_view') ? <SystemPreferences /> : <Unauthorized />;
+            case 'notifications': return hasAccess('settings_view') ? <NotificationSettings /> : <Unauthorized />;
+            case 'cashflow': return hasAccess('cashflow_view') ? <CashFlow /> : <Unauthorized />;
+            case 'reports': return hasAccess('settings_view') ? <CashReports /> : <Unauthorized />;
+            case 'clients': return hasAccess('clients_view') ? <ClientList /> : <Unauthorized />;
+            case 'commissions': return hasAccess('commissions_view') ? <SalonComissoesDashboard /> : <Unauthorized />;
+            case 'agenda': return hasAccess('agenda_view') ? <DetailedAgenda /> : <Unauthorized />;
+            case 'users': return hasAccess('settings_view') ? <UsersPermissions /> : <Unauthorized />;
+            default: return <DashboardOverview onNavigate={setCurrentScreen} />;
+          }
+        })()}
+      </Suspense>
+    );
   };
 
   const allMenuItems = [

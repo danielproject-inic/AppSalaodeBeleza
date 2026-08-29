@@ -346,7 +346,7 @@ const ServicesCatalog: React.FC = () => {
                                <div className="flex flex-col items-center justify-center space-y-3 mb-12 w-full relative z-10">
                                     <div className="flex flex-col items-center w-full px-4">
                                         <h3 
-                                             className="text-[16px] font-black text-white italic tracking-tighter leading-[1.2] transition-colors text-center line-clamp-3 h-[60px] flex items-center justify-center w-full font-syne"
+                                             className="text-[16px] font-black text-white italic tracking-tighter leading-[1.2] transition-colors text-center line-clamp-3 h-[60px] flex items-center justify-center w-full font-syne uppercase"
                                         >
                                              {s.title}
                                         </h3>
@@ -441,8 +441,8 @@ const ServicesCatalog: React.FC = () => {
                                             type="text" 
                                             placeholder="NOME DO SERVIÇO" 
                                             value={svcName}
-                                            onChange={(e) => setSvcName(e.target.value)}
-                                            className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black text-lg outline-none focus:border-amber-500 transition-all placeholder:text-white/45 text-center"
+                                            onChange={(e) => setSvcName(e.target.value.toUpperCase())}
+                                            className="w-full bg-transparent border-b border-white/10 py-3 text-white font-black text-lg outline-none focus:border-amber-500 transition-all placeholder:text-white/45 text-center uppercase"
                                        />
                                   </div>
                                   <div className="space-y-2 flex flex-col items-center relative">

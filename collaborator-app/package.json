@@ -11,6 +11,10 @@
     "postinstall": "cd .. && npm install"
   },
   "dependencies": {
+    "@capacitor/android": "^7.0.1",
+    "@capacitor/core": "^7.0.1",
+    "@capacitor/haptics": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0",
     "@supabase/supabase-js": "^2.90.1",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",

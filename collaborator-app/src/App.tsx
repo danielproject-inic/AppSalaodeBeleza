@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from './lib/supabase';
 import Auth from './screens/Auth';
@@ -22,15 +21,25 @@ import CashPinSetup from './components/CashPinSetup';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import CashReports from './components/CashReports';
 
+// Futuristic Space Cyber Neon Mobile Modules
+import { CosmicBackground } from './components/CosmicBackground';
+import { FuturisticBottomDock } from './components/FuturisticBottomDock';
+import { CollaboratorMobileHome } from './screens/CollaboratorMobileHome';
+import { CollaboratorCommissionsHUD } from './screens/CollaboratorCommissionsHUD';
+import { CollaboratorClientsRadar } from './screens/CollaboratorClientsRadar';
+import { CollaboratorProfile } from './screens/CollaboratorProfile';
+
 import { useCurrentTime } from './hooks/useCurrentTime';
 import { useSalonConfig } from './hooks/useSalonConfig';
 import { useCurrentUserRef, ModuleKey } from './hooks/useCurrentUserRef';
 import { useAutoLogout } from './hooks/useAutoLogout';
 
-// Supabase state is now handled internally by child components via hooks
-const App = () => {
+export const App = () => {
   const [session, setSession] = useState<any>(null);
   const [currentScreen, setCurrentScreen] = useState<string>('overview');
+  const [mobileTab, setMobileTab] = useState<string>('agenda');
+  const [isMobile, setIsMobile] = useState<boolean>(window.innerWidth < 768);
+
   const { formattedTime, formattedDate } = useCurrentTime();
   const { config, loading: configLoading } = useSalonConfig();
   const { profile, role, professionalId, hasAccess, loading: permissionsLoading, mustChangePassword } = useCurrentUserRef();
@@ -44,7 +53,12 @@ const App = () => {
       setSession(session);
     });
 
-    // Prevent scrolling on number inputs globally
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener('resize', handleResize);
+
     const handleWheel = (event: WheelEvent) => {
       const target = event.target as HTMLInputElement;
       if (target && target.tagName === 'INPUT' && target.type === 'number') {
@@ -55,66 +69,18 @@ const App = () => {
 
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('resize', handleResize);
       document.removeEventListener('wheel', handleWheel);
     };
   }, []);
-
-  // Medir largura física real do container de scroll para alinhamento perfeito do Nav Bar
-  useEffect(() => {
-    if (!session) return;
-
-    const updateScrollbarWidth = () => {
-      const scrollEl = document.getElementById('main-scroll-container');
-      if (scrollEl) {
-        const scrollbarWidth = scrollEl.offsetWidth - scrollEl.clientWidth;
-        document.documentElement.style.setProperty('--scrollbar-width', `${scrollbarWidth}px`);
-      }
-    };
-
-    updateScrollbarWidth();
-    const timer = setTimeout(updateScrollbarWidth, 100);
-
-    const scrollEl = document.getElementById('main-scroll-container');
-    let observer: ResizeObserver | null = null;
-    if (scrollEl) {
-      observer = new ResizeObserver(() => {
-        updateScrollbarWidth();
-      });
-      observer.observe(scrollEl);
-    }
-
-    window.addEventListener('resize', updateScrollbarWidth);
-
-    return () => {
-      clearTimeout(timer);
-      if (observer && scrollEl) {
-        observer.unobserve(scrollEl);
-      }
-      window.removeEventListener('resize', updateScrollbarWidth);
-    };
-  }, [session, currentScreen]);
-
-  useEffect(() => {
-    // Logic to clear "ghost" sessions if the database was wiped
-    if (!permissionsLoading && session && !profile) {
-      handleLogout();
-    }
-  }, [permissionsLoading, session, profile]);
-
-  useEffect(() => {
-    // Logic to redirect if user loses permission to current screen?
-    // For now, renderScreen handles conditional rendering, but maybe we force switch to overview?
-    // We'll let renderScreen show Unauthorized component for better UX.
-  }, [currentScreen]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
   };
 
-  // Logout automático por inatividade ou suspensão do SO (15 minutos)
   useAutoLogout(handleLogout, 15, !!session);
 
-  const renderScreen = () => {
+  const renderWebScreen = () => {
     if (permissionsLoading || configLoading) return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
         <div className="size-16 rounded-full border-4 border-[#d9a821]/20 border-t-[#06b6d4] animate-spin mb-4"></div>
@@ -135,31 +101,6 @@ const App = () => {
       </div>
     );
 
-    const WelcomeScreen = () => (
-      <div className="h-full flex flex-col items-center justify-center text-center p-8 animate-in fade-in zoom-in duration-700">
-        <div className="size-24 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-8 relative">
-          <div className="absolute inset-0 bg-amber-500/20 blur-2xl rounded-full animate-pulse"></div>
-          <span className="material-symbols-outlined text-5xl text-amber-500 relative z-10">waving_hand</span>
-        </div>
-        <h2 className="text-3xl font-black text-white mb-4 tracking-tight">Olá, {profile?.full_name?.split(' ')[0]}!</h2>
-        <p className="text-slate-400 max-w-md font-medium leading-relaxed">
-          Seu acesso ainda está sendo configurado. <br/>
-          Assim que o administrador liberar seus módulos, eles aparecerão aqui para você.
-        </p>
-        <div className="mt-12 p-6 bg-white/5 border border-white/10 rounded-2xl max-w-xs w-full">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-2">Status da Conta</p>
-            <div className="flex items-center justify-center gap-2 text-amber-500">
-                <span className="size-2 rounded-full bg-amber-500 animate-pulse"></span>
-                <span className="font-bold text-xs uppercase tracking-widest">Aguardando Liberação</span>
-            </div>
-        </div>
-      </div>
-    );
-
-    if (menuItems.length === 0) {
-      return <WelcomeScreen />;
-    }
-
     switch (currentScreen) {
       case 'settings': return hasAccess('settings_view') ? <SettingsDashboard onNavigate={setCurrentScreen} /> : <Unauthorized />;
       case 'integrations': return hasAccess('settings_view') ? <Integrations /> : <Unauthorized />;
@@ -175,7 +116,7 @@ const App = () => {
       case 'clients': return hasAccess('clients_view') ? <ClientList /> : <Unauthorized />;
       case 'commissions': return hasAccess('commissions_view') ? <SalonComissoesDashboard /> : <Unauthorized />;
       case 'agenda': return hasAccess('agenda_view') ? <DetailedAgenda /> : <Unauthorized />;
-      case 'users': return hasAccess('settings_view') ? <UsersPermissions /> : <Unauthorized />; // Users mgmt usually part of settings/admin
+      case 'users': return hasAccess('settings_view') ? <UsersPermissions /> : <Unauthorized />;
       default: return <DashboardOverview />;
     }
   };
@@ -195,33 +136,46 @@ const App = () => {
 
   const menuItems = allMenuItems.filter(item => hasAccess(item.module));
 
-  // Redirect to first allowed screen if current is unauthorized
-  useEffect(() => {
-    if (!permissionsLoading && !hasAccess((allMenuItems.find(i => i.id === currentScreen)?.module as ModuleKey) || 'dashboard_view')) {
-      if (menuItems.length > 0) {
-        setCurrentScreen(menuItems[0].id);
-      }
-    }
-  }, [permissionsLoading, currentScreen, hasAccess, allMenuItems, menuItems]); // Added hasAccess, allMenuItems, menuItems to dependencies
-
   if (!session) {
     return <Auth onAuthSuccess={() => { }} />;
   }
 
-  // Force password change on first access (collaborator app specific)
   if (mustChangePassword && !permissionsLoading) {
     return <ForcePasswordChange onComplete={() => window.location.reload()} />;
   }
 
-  // If user has cash access but no PIN, force PIN setup
   if (session && profile && !profile.cash_pin && hasAccess('cashflow_view') && !permissionsLoading) {
     return <CashPinSetup userId={session.user.id} onComplete={() => window.location.reload()} />;
   }
 
+  // MOBILE / APK MODE: Futuristic Space Cyber Neon Experience ("Top das Galáxias")
+  if (isMobile) {
+    return (
+      <div className="relative min-h-screen bg-[#050814] font-display text-slate-100 selection:bg-[#00f0ff] selection:text-black overflow-x-hidden">
+        {/* Cosmic Ambient Nebula Animation */}
+        <CosmicBackground />
+
+        {/* Screen Content Render */}
+        <div className="relative z-10">
+          {mobileTab === 'agenda' && <CollaboratorMobileHome />}
+          {mobileTab === 'commissions' && <CollaboratorCommissionsHUD />}
+          {mobileTab === 'clients' && <CollaboratorClientsRadar />}
+          {mobileTab === 'profile' && <CollaboratorProfile />}
+        </div>
+
+        {/* Floating Glass Dock Navigation */}
+        <FuturisticBottomDock
+          currentTab={mobileTab}
+          onSelectTab={setMobileTab}
+        />
+      </div>
+    );
+  }
+
+  // DESKTOP WEB MODE: Classic Salon Suite Pro Web Layout
   return (
     <div className="flex flex-col h-screen w-full bg-[#0f172a] font-display overflow-hidden text-[#f1f5f9]">
-
-      {/* 1. Global Header - Exact Reference 1 Tone */}
+      {/* 1. Global Header */}
       <header className="flex-none bg-[#0f172a] border-b border-white/5 z-50 px-6 lg:px-10 h-28 flex items-center justify-between relative transition-all">
         <div className="flex items-center gap-8">
           <div className="h-20 w-20 rounded-2xl p-0.5 shadow-sm border border-cyan-100 flex items-center justify-center bg-white/5 overflow-hidden">
@@ -253,7 +207,7 @@ const App = () => {
           </div>
           <div className="flex items-center gap-5">
             <div className="group relative">
-              <div className="h-12 w-12 rounded-2xl border-2 border-transparent hover:border-[#b87333] cursor-pointer transition-all p-0.5 bg-white/5 overflow-hidden">
+              <div className="h-12 w-12 rounded-2xl border-2 border-transparent hover:border-[#b87333] cursor-pointer transition-all p-0.5 bg-[#1e293b] overflow-hidden">
                 {profile?.avatar_url ? (
                   <div className="h-full w-full rounded-2xl bg-cover bg-center" style={{ backgroundImage: `url("${profile.avatar_url}")` }}></div>
                 ) : (
@@ -281,7 +235,7 @@ const App = () => {
         </div>
       </header>
 
-      {/* 2. Optimized Floating Navbar */}
+      {/* 2. Floating Navbar */}
       {menuItems.length > 0 ? (
         <div 
           className="flex-none z-40 flex justify-center py-4 px-2 lg:px-8 bg-transparent pointer-events-none sticky top-0"
@@ -300,19 +254,16 @@ const App = () => {
                       onClick={() => setCurrentScreen(item.id)}
                       className="group relative flex flex-col items-center justify-center rounded-xl transition-all duration-400 cursor-pointer flex-1 px-4 py-2 min-w-[76px]"
                     >
-                      {/* Badge for coming soon items */}
                       {item.id === 'products' && (
                         <span className="absolute -top-1 -right-2 z-20 bg-amber-600 text-white text-[7px] font-black px-1.5 py-0.5 rounded-sm shadow-xl ring-1 ring-white/20 whitespace-nowrap animate-pulse uppercase tracking-tighter">
                           Em Breve
                         </span>
                       )}
 
-                      {/* Active background glow */}
                       {isActive && (
                         <div className="absolute inset-0 rounded-xl bg-[#2c3e50] border border-[#b87333]/20" />
                       )}
 
-                      {/* Icon with Subtle Glow */}
                       <div className="relative z-10 flex items-center justify-center w-[38px] h-[38px]">
                         {isActive && (
                           <div className="absolute inset-0 rounded-full bg-[#b45309]/10 shadow-[0_0_8px_rgba(180,83,9,0.3)] border border-[#b45309]/30" />
@@ -326,7 +277,6 @@ const App = () => {
                         </span>
                       </div>
 
-                      {/* Label */}
                       <span
                         className={`relative z-10 transition-colors duration-300 text-[12px] font-bold tracking-wider mt-0.5 ${
                           isActive ? 'text-white' : 'text-[#4b5563]'
@@ -342,11 +292,11 @@ const App = () => {
         </div>
       ) : null}
 
-      {/* Main Content Area - Full Width with Max Constraint */}
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative ref-body">
         <div className="flex-1 w-full h-full overflow-y-auto relative" id="main-scroll-container">
           <div className="h-full w-full max-w-[1920px] mx-auto bg-transparent">
-            {renderScreen()}
+            {renderWebScreen()}
           </div>
         </div>
       </div>

@@ -29,10 +29,13 @@
         "repo": "AppSalaodeBeleza"
       }
     ],
+    "forceCodeSigning": false,
     "win": {
       "icon": "build/icon.ico",
+      "verifyUpdateCodeSignature": false,
       "target": [
-        "nsis"
+        "nsis",
+        "portable"
       ]
     },
     "nsis": {

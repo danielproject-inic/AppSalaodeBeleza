@@ -4,7 +4,11 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: './',
   plugins: [react()],
+  build: {
+    target: 'chrome70'
+  },
   resolve: {
     alias: {
       '@hooks': path.resolve(__dirname, '../hooks')

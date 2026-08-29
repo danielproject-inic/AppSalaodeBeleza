@@ -1,4 +1,4 @@
-package com.salonsuitepro.app;
+package com.salonsuitepro.collaborator;
 
 import com.getcapacitor.BridgeActivity;
 

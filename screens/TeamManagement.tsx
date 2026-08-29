@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { AvailabilityModal } from '../components/AvailabilityModal';
 import { useProfessionals } from '../hooks/useProfessionals';
 import { useSystemUsers } from '../hooks/useSystemUsers';
+import { useServices } from '../hooks/useServices';
 import { Database } from '../lib/database.types';
 import { supabase } from '../lib/supabase';
 
@@ -51,6 +52,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
         totalReviews: number;
         agendamentosRecentes: Agendamento[];
         desempenho: number[];
+        servicos: string[];
     }
 
     // --- SUPABASE HOOK ---
@@ -69,6 +71,7 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
     } = useProfessionals();
 
     const { users } = useSystemUsers();
+    const { services } = useServices();
 
     const collaborators: Collaborator[] = useMemo(() => {
         return dbProfessionals.map(p => {
@@ -99,7 +102,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                 rating: p.average_rating ? Number(p.average_rating) : 5.0,
                 totalReviews: p.total_reviews || 0,
                 agendamentosRecentes: [], // Needs separate fetch or join
-                desempenho: [] // Needs stats
+                desempenho: [], // Needs stats
+                servicos: (p.services || []).map((s: any) => s.service_id)
             };
         });
     }, [dbProfessionals]);
@@ -228,7 +232,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
         cidade: '',
         estado: '',
         complemento: '',
-        periodo: 'Integral'
+        periodo: 'Integral',
+        servicos: [] as string[]
     };
 
     const [newCollaborator, setNewCollaborator] = useState(emptyCollaborator);
@@ -416,7 +421,8 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
             bairro: selectedCollaborator.endereco?.bairro || '',
             cidade: selectedCollaborator.endereco?.cidade || '',
             estado: selectedCollaborator.endereco?.estado || '',
-            complemento: selectedCollaborator.endereco?.complemento || ''
+            complemento: selectedCollaborator.endereco?.complemento || '',
+            servicos: selectedCollaborator.servicos || []
         });
         setAvatarPreview(selectedCollaborator.avatar);
         setCpfStatus(selectedCollaborator.cpf && validateCPF(selectedCollaborator.cpf) ? 'valid' : 'idle');
@@ -445,6 +451,11 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
     };
 
     const handleSaveCollaborator = async () => {
+        if (!newCollaborator.servicos || newCollaborator.servicos.length === 0) {
+            setSuccessModalState({ isOpen: true, title: 'SERVIÇOS OBRIGATÓRIOS', description: 'Por favor, selecione ao menos um serviço que o colaborador realiza antes de salvar.', isError: true });
+            return;
+        }
+
         // Validação de E-mail Único
         if (newCollaborator.email) {
             const emailInUse = collaborators.some(c =>
@@ -485,9 +496,9 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
 
         let result;
         if (isEditing && selectedCollaborator) {
-            result = await updateProfessional(selectedCollaborator.id, professionalData);
+            result = await updateProfessional(selectedCollaborator.id, professionalData, newCollaborator.servicos);
         } else {
-            result = await addProfessional(professionalData);
+            result = await addProfessional(professionalData, newCollaborator.servicos);
         }
 
         if (result) {
@@ -701,6 +712,62 @@ const TeamManagement: React.FC<TeamManagementProps> = ({ hasAccess, currentProfi
                                                         : 'bg-[#0f172a]/60 border-white/5 text-white focus:border-amber-500/30'
                                                         }`}
                                                 />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Serviços Realizados */}
+                                    <div>
+                                        <h4 className="text-[11px] font-black text-amber-500 uppercase tracking-[0.2em] mb-8 flex items-center gap-4">
+                                            <span className="w-12 h-px bg-amber-500/20"></span>
+                                            Serviços Realizados (Obrigatório)
+                                        </h4>
+                                        <div className="grid grid-cols-1 gap-4">
+                                            {services.length === 0 && (
+                                                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-1">Nenhum serviço cadastrado no catálogo.</p>
+                                            )}
+                                            <div className="flex flex-col gap-2 max-h-[300px] overflow-y-auto custom-scrollbar pr-2">
+                                                {services.map(service => {
+                                                    const isSelected = newCollaborator.servicos?.includes(service.id);
+                                                    return (
+                                                        <label
+                                                            key={service.id}
+                                                            className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer ${
+                                                                isSelected 
+                                                                    ? 'bg-amber-500/10 border-amber-500/30' 
+                                                                    : 'bg-[#0f172a]/40 border-white/5 hover:border-white/10 hover:bg-[#0f172a]/60'
+                                                            }`}
+                                                        >
+                                                            <div className={`size-6 rounded flex items-center justify-center border transition-all ${
+                                                                isSelected
+                                                                    ? 'bg-amber-500 border-amber-500 text-slate-900'
+                                                                    : 'bg-transparent border-white/20'
+                                                            }`}>
+                                                                {isSelected && <span className="material-symbols-outlined text-[16px] font-black">check</span>}
+                                                            </div>
+                                                            <div className="flex flex-col">
+                                                                <span className="text-sm font-bold text-white uppercase tracking-wider">{service.title}</span>
+                                                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{service.category}</span>
+                                                            </div>
+                                                            <input
+                                                                type="checkbox"
+                                                                className="hidden"
+                                                                checked={isSelected}
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setNewCollaborator(prev => {
+                                                                        const currServs = prev.servicos || [];
+                                                                        if (checked) {
+                                                                            return { ...prev, servicos: [...currServs, service.id] };
+                                                                        } else {
+                                                                            return { ...prev, servicos: currServs.filter(id => id !== service.id) };
+                                                                        }
+                                                                    });
+                                                                }}
+                                                            />
+                                                        </label>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     </div>

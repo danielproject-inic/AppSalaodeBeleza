@@ -21,4 +21,4 @@ gradle = { group = "com.android.tools.build", name = "gradle", version.ref = "gr
 junit = { group = "junit", name = "junit", version.ref = "junitVersion" }
 
 [plugins]
-gradle-toolchains-foojay-resolver-convention = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "gradleToolchainsFoojayResolverConvention" }
+foojay = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "gradleToolchainsFoojayResolverConvention" }

@@ -6,6 +6,7 @@ type BaseProfessional = Database['public']['Tables']['professionals']['Row'];
 
 export interface Professional extends BaseProfessional {
     reviews?: Database['public']['Tables']['professional_reviews']['Row'][];
+    services?: { service_id: string }[];
 }
 
 type Exception = Database['public']['Tables']['professional_exceptions']['Row'];
@@ -22,7 +23,7 @@ export const useProfessionals = () => {
             const [proResponse, exResponse] = await Promise.all([
                 supabase
                     .from('professionals')
-                    .select('*, reviews:professional_reviews(*)')
+                    .select('*, reviews:professional_reviews(*), services:service_professionals(service_id)')
                     .order('name'),
                 supabase.from('professional_exceptions').select('*')
             ]);
@@ -43,7 +44,7 @@ export const useProfessionals = () => {
         fetchData();
     }, []);
 
-    const addProfessional = async (newPro: Database['public']['Tables']['professionals']['Insert']) => {
+    const addProfessional = async (newPro: Database['public']['Tables']['professionals']['Insert'], serviceIds?: string[]) => {
         try {
             const { data, error } = await supabase
                 .from('professionals')
@@ -52,7 +53,20 @@ export const useProfessionals = () => {
                 .single();
 
             if (error) throw error;
-            setProfessionals(prev => [...prev, data]);
+
+            if (serviceIds && serviceIds.length > 0) {
+                const relations = serviceIds.map(sId => ({
+                    service_id: sId,
+                    professional_id: data.id
+                }));
+                const { error: relError } = await supabase
+                    .from('service_professionals')
+                    .insert(relations);
+
+                if (relError) throw relError;
+            }
+
+            await fetchData();
             return data;
         } catch (err: any) {
             setError(err.message);
@@ -60,7 +74,7 @@ export const useProfessionals = () => {
         }
     };
 
-    const updateProfessional = async (id: string, updates: Database['public']['Tables']['professionals']['Update']) => {
+    const updateProfessional = async (id: string, updates: Database['public']['Tables']['professionals']['Update'], serviceIds?: string[]) => {
         try {
             const { data, error } = await supabase
                 .from('professionals')
@@ -70,7 +84,31 @@ export const useProfessionals = () => {
                 .single();
 
             if (error) throw error;
-            setProfessionals(prev => prev.map(p => p.id === id ? data : p));
+
+            if (serviceIds !== undefined) {
+                // Delete old relations
+                const { error: delError } = await supabase
+                    .from('service_professionals')
+                    .delete()
+                    .eq('professional_id', id);
+
+                if (delError) throw delError;
+
+                // Insert new relations
+                if (serviceIds.length > 0) {
+                    const relations = serviceIds.map(sId => ({
+                        service_id: sId,
+                        professional_id: id
+                    }));
+                    const { error: relError } = await supabase
+                        .from('service_professionals')
+                        .insert(relations);
+
+                    if (relError) throw relError;
+                }
+            }
+
+            await fetchData();
             return data;
         } catch (err: any) {
             setError(err.message);

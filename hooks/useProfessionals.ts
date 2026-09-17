@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
+import { cacheItems, getCachedItems } from '../lib/offlineStorage';
 
 type BaseProfessional = Database['public']['Tables']['professionals']['Row'];
 
@@ -31,10 +32,27 @@ export const useProfessionals = () => {
             if (proResponse.error) throw proResponse.error;
             if (exResponse.error) throw exResponse.error;
 
-            setProfessionals(proResponse.data || []);
+            const pros = proResponse.data || [];
+            setProfessionals(pros);
             setExceptions(exResponse.data || []);
+            setError(null);
+
+            if (pros.length > 0) {
+                cacheItems('professionals', pros).catch(console.warn);
+            }
         } catch (err: any) {
-            setError(err.message);
+            console.warn('[useProfessionals] Erro ao buscar da nuvem, tentando cache offline...', err);
+            try {
+                const cachedPros = await getCachedItems<Professional>('professionals');
+                if (cachedPros.length > 0) {
+                    setProfessionals(cachedPros);
+                    setError(null);
+                } else {
+                    setError(err.message);
+                }
+            } catch (cacheErr: any) {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }

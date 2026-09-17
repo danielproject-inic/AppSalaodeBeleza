@@ -112,7 +112,7 @@ const CashFlow = () => {
     };
 
     // --- Supabase Hooks ---
-    const { transactions: dbTransactions, addTransaction, loading: loadingTrans } = useTransactions();
+    const { transactions: dbTransactions, setTransactions, addTransaction, updateTransaction, refetch: refetchTransactions, loading: loadingTrans } = useTransactions();
     const { bills: dbBills, addBill, updateBill: updateDbBill, loading: loadingBills } = useBills();
     // OPTIMIZATION: Fetch appointments for the selected date
     const { appointments: dbAppointments, updateAppointment } = useAppointments(`${selectedDate}T00:00:00`, `${selectedDate}T23:59:59`);
@@ -843,23 +843,65 @@ const CashFlow = () => {
             return;
         }
 
-        const { error } = await supabase
-            .from('transactions')
-            .update({
-                status: 'pago',
-                payment_method: resolvePaymentMethod,
-                created_at: new Date().toISOString(),
-                cash_session_id: activeSession?.id || null
-            })
-            .eq('id', selectedPendingTransaction.id);
+        const pendingId = selectedPendingTransaction.id;
+        const resolvedMethod = resolvePaymentMethod;
+        const nowIso = new Date().toISOString();
+        const sessionId = activeSession?.id || null;
 
-        if (error) {
-            alert('Erro ao dar baixa no pagamento: ' + error.message);
-            return;
-        }
+        // 1. ATUALIZAÇÃO INSTANTÂNEA NA TELA:
+        // Atualiza imediatamente o estado local de transações em memória para que o card suma do 'A RECEBER (FIADO)' em 0 milissegundos
+        setTransactions(prev => prev.map(t => t.id === pendingId ? {
+            ...t,
+            status: 'pago',
+            payment_method: resolvedMethod,
+            cash_session_id: sessionId,
+            created_at: nowIso
+        } : t));
 
+        // Fecha o modal e limpa o formulário imediatamente
         setModalMode('none');
         resetForm();
+
+        // 2. Persiste a alteração no banco de dados
+        try {
+            const updated = await updateTransaction(pendingId, {
+                status: 'pago',
+                payment_method: resolvedMethod,
+                created_at: nowIso,
+                cash_session_id: sessionId
+            });
+
+            if (!updated) {
+                // Fallback de contingência direto via Supabase
+                const { error } = await supabase
+                    .from('transactions')
+                    .update({
+                        status: 'pago',
+                        payment_method: resolvedMethod,
+                        created_at: nowIso,
+                        cash_session_id: sessionId
+                    })
+                    .eq('id', pendingId);
+
+                if (error) {
+                    alert('Erro ao dar baixa no pagamento: ' + error.message);
+                    await refetchTransactions();
+                    return;
+                }
+            }
+
+            // Sincroniza os dados com o servidor
+            await refetchTransactions();
+
+            // Modal de confirmação amigável
+            setSuccess({
+                title: 'Quitação Confirmada!',
+                message: 'O débito foi quitado com sucesso e o valor já foi lançado no fluxo de caixa.'
+            });
+        } catch (err: any) {
+            console.error('Erro na quitação:', err);
+            await refetchTransactions();
+        }
     };
 
     // Quick Op handled by Vale modal now

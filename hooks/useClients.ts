@@ -1,6 +1,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
+import {
+    cacheItems,
+    getCachedItems,
+    putCachedItem,
+    deleteCachedItem,
+    enqueueSync,
+    generateUUID
+} from '../lib/offlineStorage';
 
 type Client = Database['public']['Tables']['clients']['Row'];
 
@@ -25,9 +33,25 @@ export const useClients = () => {
                 .order('name');
 
             if (error) throw error;
-            setClients(data || []);
+            const items = data || [];
+            setClients(items);
+            setError(null);
+
+            if (items.length > 0) {
+                cacheItems('clients', items).catch(err =>
+                    console.warn('[useClients] Erro ao salvar cache local:', err)
+                );
+            }
         } catch (err: any) {
-            setError(err.message);
+            console.warn('[useClients] Falha ao buscar da nuvem, tentando cache offline...', err);
+            try {
+                const cached = await getCachedItems<Client>('clients');
+                cached.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                setClients(cached);
+                setError(null);
+            } catch (cacheErr: any) {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }
@@ -35,6 +59,24 @@ export const useClients = () => {
 
     useEffect(() => {
         fetchClients();
+
+        const channelId = `clients_channel_${Math.random().toString(36).substring(2, 9)}`;
+        const channel = supabase
+            .channel(channelId)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'clients' }, () => {
+                fetchClients();
+            })
+            .subscribe();
+
+        const handleSyncCompleted = () => {
+            fetchClients();
+        };
+        window.addEventListener('offline-sync-completed', handleSyncCompleted);
+
+        return () => {
+            supabase.removeChannel(channel);
+            window.removeEventListener('offline-sync-completed', handleSyncCompleted);
+        };
     }, []);
 
     // Check for duplicate clients by name, phone, or CPF
@@ -96,23 +138,83 @@ export const useClients = () => {
     };
 
     const addClient = async (newClient: Database['public']['Tables']['clients']['Insert']) => {
+        const id = newClient.id || generateUUID();
+        const clientWithId: Client = {
+            ...newClient,
+            id,
+            created_at: newClient.created_at || new Date().toISOString()
+        } as Client;
+
+        const handleOfflineAdd = async () => {
+            console.log('[useClients] Cadastrando cliente em modo offline...', clientWithId);
+            await putCachedItem('clients', clientWithId);
+            await enqueueSync({
+                table: 'clients',
+                action: 'insert',
+                recordId: id,
+                payload: clientWithId
+            });
+            setClients(prev => [...prev, clientWithId]);
+            return clientWithId;
+        };
+
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            return await handleOfflineAdd();
+        }
+
         try {
             const { data, error } = await supabase
                 .from('clients')
-                .insert(newClient)
+                .insert(clientWithId)
                 .select()
                 .single();
 
             if (error) throw error;
             setClients(prev => [...prev, data]);
+            putCachedItem('clients', data).catch(console.warn);
             return data;
         } catch (err: any) {
+            if (err.message?.includes('fetch') || err.message?.includes('network') || !navigator.onLine) {
+                return await handleOfflineAdd();
+            }
             setError(err.message);
             return null;
         }
     };
 
     const updateClient = async (id: string, updates: Database['public']['Tables']['clients']['Update']) => {
+        const handleOfflineUpdate = async () => {
+            console.log('[useClients] Atualizando cliente em modo offline...', id, updates);
+            let updatedRecord: Client | null = null;
+            setClients(prev => {
+                const next = prev.map(c => {
+                    if (c.id === id) {
+                        updatedRecord = { ...c, ...updates };
+                        return updatedRecord;
+                    }
+                    return c;
+                });
+                return next;
+            });
+
+            if (updatedRecord) {
+                await putCachedItem('clients', updatedRecord);
+            }
+
+            await enqueueSync({
+                table: 'clients',
+                action: 'update',
+                recordId: id,
+                payload: updates
+            });
+
+            return updatedRecord;
+        };
+
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            return await handleOfflineUpdate();
+        }
+
         try {
             const { data, error } = await supabase
                 .from('clients')
@@ -123,14 +225,35 @@ export const useClients = () => {
 
             if (error) throw error;
             setClients(prev => prev.map(c => c.id === id ? data : c));
+            putCachedItem('clients', data).catch(console.warn);
             return data;
         } catch (err: any) {
+            if (err.message?.includes('fetch') || err.message?.includes('network') || !navigator.onLine) {
+                return await handleOfflineUpdate();
+            }
             setError(err.message);
             return null;
         }
     };
 
     const deleteClient = async (id: string) => {
+        const handleOfflineDelete = async () => {
+            console.log('[useClients] Excluindo cliente em modo offline...', id);
+            setClients(prev => prev.filter(c => c.id !== id));
+            await deleteCachedItem('clients', id);
+            await enqueueSync({
+                table: 'clients',
+                action: 'delete',
+                recordId: id,
+                payload: null
+            });
+            return true;
+        };
+
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            return await handleOfflineDelete();
+        }
+
         try {
             const { error } = await supabase
                 .from('clients')
@@ -139,8 +262,12 @@ export const useClients = () => {
 
             if (error) throw error;
             setClients(prev => prev.filter(c => c.id !== id));
+            deleteCachedItem('clients', id).catch(console.warn);
             return true;
         } catch (err: any) {
+            if (err.message?.includes('fetch') || err.message?.includes('network') || !navigator.onLine) {
+                return await handleOfflineDelete();
+            }
             setError(err.message);
             return false;
         }

@@ -26,6 +26,9 @@ const CashFlow = lazy(() => import('./screens/CashFlow'));
 const DetailedAgenda = lazy(() => import('./screens/DetailedAgenda'));
 const SalonComissoesDashboard = lazy(() => import('./screens/SalonComissoesDashboard'));
 const CashReports = lazy(() => import('./components/CashReports'));
+import { FloatingAppointmentTracker } from './components/FloatingAppointmentTracker';
+import { CloudStatusPill } from './components/CloudStatusPill';
+import { initAutoSync } from './lib/offlineSync';
 
 // Supabase state is now handled internally by child components via hooks
 const App = () => {
@@ -36,6 +39,9 @@ const App = () => {
   const { profile, role, professionalId, hasAccess, loading: permissionsLoading, mustChangePassword } = useCurrentUserRef();
 
   useEffect(() => {
+    // Inicializa o motor de sincronização offline automática
+    const cleanupSync = initAutoSync();
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
@@ -208,6 +214,9 @@ const App = () => {
   return (
     <div className="flex flex-col h-screen w-full bg-[#0f172a] font-display overflow-hidden text-[#f1f5f9]">
 
+      {/* Dispositivo Inteligente de Atendimentos na Linha do Tempo */}
+      <FloatingAppointmentTracker onNavigate={setCurrentScreen} />
+
       {/* 1. Global Header - Exact Reference 1 Tone */}
       <header className="flex-none bg-[#0f172a] border-b border-white/5 z-50 px-4 lg:px-10 h-20 lg:h-28 flex items-center justify-between relative transition-all">
         <div className="flex items-center gap-3 lg:gap-8">
@@ -221,7 +230,10 @@ const App = () => {
             <span className="text-[10px] lg:text-xs font-bold text-[#b87333] tracking-[0.2em] uppercase mt-0.5 lg:mt-1">{config?.phone || ''}</span>
           </div>
         </div>
-        <div className="flex items-center gap-8">
+        <div className="flex items-center gap-4 lg:gap-6">
+          {/* Indicador de Status Offline / Nuvem */}
+          <CloudStatusPill />
+
           <div className="hidden xl:flex flex-col items-end border-r border-[#2c3e50]/50 pr-8">
             <div className="flex items-center gap-3 text-white text-2xl leading-none font-black">
               <span className="material-symbols-outlined text-[#b87333] text-[24px]">schedule</span>

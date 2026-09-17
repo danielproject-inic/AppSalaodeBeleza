@@ -97,6 +97,7 @@ export const useTransactions = (limitCount: number = 500) => {
 
     return {
         transactions,
+        setTransactions,
         loading,
         error,
         addTransaction,

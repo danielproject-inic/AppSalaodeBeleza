@@ -171,6 +171,72 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   });
   return map;
  }, [appointments]);
+  const isViewingAugust2026 = calYear === 2026 && calMonth === 7;
+
+  // Atendimentos em aberto ESTRITAMENTE nos dias 4, 18, 27 e 28 de Agosto de 2026
+  const pendingPastAppointments = useMemo(() => {
+   if (!isViewingAugust2026) return [];
+
+   const targetAugustDays = ['2026-08-04', '2026-08-18', '2026-08-27', '2026-08-28'];
+   return appointments.filter(a => {
+    return targetAugustDays.includes(a.date) && a.status === 'em_atendimento';
+   });
+  }, [appointments, isViewingAugust2026]);
+
+ const [quitarLoading, setQuitarLoading] = useState(false);
+ const [quitarSuccessModal, setQuitarSuccessModal] = useState<{ total: number; count: number; items: string[] } | null>(null);
+
+ const handleQuitarTodosAugust = async () => {
+  if (pendingPastAppointments.length === 0) return;
+  setQuitarLoading(true);
+  let count = 0;
+  let total = 0;
+  const items: string[] = [];
+
+  try {
+   for (const apt of pendingPastAppointments) {
+     const svc = services.find(s => s.title === apt.service);
+     const pro = dbProfessionals.find(p => p.id === apt.professionalId);
+     const price = svc?.price || 0;
+     const aptDateIso = `${apt.date}T${apt.startHour}:${apt.startMinute}:00`;
+     const aptEndIso = `${apt.date}T${apt.endHour}:${apt.endMinute}:00`;
+
+     await addTransaction({
+       amount: price,
+       type: 'entrada',
+       status: 'pago',
+       description: `Pgto PIX: Serviço ${apt.service} (${apt.clientName})`,
+       client_id: apt.clientId || null,
+       professional_id: apt.professionalId || null,
+       payment_method: 'PIX',
+       category: 'Serviço',
+       created_at: apt.servico_iniciado_at || aptDateIso,
+       items_json: [{
+         id: svc?.id || 'N/A',
+         title: apt.service,
+         price: price,
+         professional: pro?.name || apt.professionalName,
+         commissionPercentage: (svc as any)?.commission_percentage || 0
+       }]
+     });
+
+     await updateAppointment(apt.id, {
+       status: 'pago',
+       servico_terminado_at: apt.servico_terminado_at || aptEndIso
+     });
+
+     count++;
+     total += price;
+     items.push(`${apt.clientName} • ${apt.service} (R$ ${price.toFixed(2)}) — ${new Date(aptDateIso).toLocaleDateString('pt-BR')} às ${apt.startHour}:${apt.startMinute}`);
+   }
+  } catch (err: any) {
+   console.error('Erro ao quitar atendimentos de agosto:', err);
+   alert('Erro durante a quitação: ' + err.message);
+  } finally {
+   setQuitarLoading(false);
+   setQuitarSuccessModal({ total, count, items });
+  }
+ };
 
  const [isModalOpen, setIsModalOpen] = useState(false);
  const [isRescheduling, setIsRescheduling] = useState(false);
@@ -378,41 +444,44 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
   resetWizard();
  };
 
- const handleUpdateStatus = useCallback(async (id: string, status: Appointment['status']) => {
-  const apt = appointments.find(a => a.id === id);
-  if (!apt) return;
+ const handleUpdateStatus = useCallback(async (id: string, status: Appointment['status'], paymentMethod: string = 'PIX') => {
+   const apt = appointments.find(a => a.id === id);
+   if (!apt) return;
 
-  const updates: any = { status };
-  if (status === 'em_atendimento') {
-   updates.servico_iniciado_at = new Date().toISOString();
-  } else if (status === 'pago') {
-   updates.servico_terminado_at = new Date().toISOString();
-   
-   // Inject transaction logic
-   const svc = services.find(s => s.title === apt.service);
-   if (svc) {
-     const pro = dbProfessionals.find(p => p.id === apt.professionalId);
-     await addTransaction({
-       amount: svc.price,
-       type: 'entrada',
-       status: 'pago', // Liquidado/Pago
-       description: `Pgto: Serviço ${apt.service}`,
-       client_id: apt.clientId || null,
-       professional_id: apt.professionalId,
-       payment_method: 'Dinheiro', // Fixado inicialmente para ter um tipo válido no caixa
-       category: 'Serviço',
-       items_json: [{
-           id: svc.id,
-           title: svc.title,
-           price: svc.price,
-           professional: pro?.name || 'N/A',
-           commissionPercentage: (svc as any).commission_percentage || 0
-       }]
-     });
+   const updates: any = { status };
+   if (status === 'em_atendimento') {
+    updates.servico_iniciado_at = new Date().toISOString();
+   } else if (status === 'pago') {
+    const aptCreatedAt = apt.servico_iniciado_at || `${apt.date}T${apt.startHour}:${apt.startMinute}:00`;
+    const aptEndAt = `${apt.date}T${apt.endHour}:${apt.endMinute}:00`;
+    updates.servico_terminado_at = aptEndAt;
+    
+    // Inject transaction logic
+    const svc = services.find(s => s.title === apt.service);
+    if (svc) {
+      const pro = dbProfessionals.find(p => p.id === apt.professionalId);
+      await addTransaction({
+        amount: svc.price,
+        type: 'entrada',
+        status: 'pago', // Liquidado/Pago
+        description: `Pgto ${paymentMethod}: Serviço ${apt.service} (${apt.clientName})`,
+        client_id: apt.clientId || null,
+        professional_id: apt.professionalId,
+        payment_method: paymentMethod,
+        category: 'Serviço',
+        created_at: aptCreatedAt,
+        items_json: [{
+            id: svc.id,
+            title: svc.title,
+            price: svc.price,
+            professional: pro?.name || 'N/A',
+            commissionPercentage: (svc as any).commission_percentage || 0
+        }]
+      });
+    }
    }
-  }
-  await updateAppointment(id, updates);
- }, [updateAppointment, appointments, services, dbProfessionals, addTransaction]);
+   await updateAppointment(id, updates);
+  }, [updateAppointment, appointments, services, dbProfessionals, addTransaction]);
 
  const handleCancel = useCallback((apt: Appointment) => {
   setAppointmentToCancel(apt);
@@ -1116,6 +1185,35 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
 
     {/* Timeline */}
     <div className="flex-1 overflow-y-auto px-6 pb-6 relative" style={{ scrollbarWidth: 'thin' }}>
+
+     {/* Banner inteligente de quitação de atendimentos de Agosto */}
+     {pendingPastAppointments.length > 0 && (
+      <div className="mt-4 mb-5 p-5 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-[#111827]/95 to-teal-950/60 border border-emerald-500/40 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in slide-in-from-top-3 duration-400 ring-1 ring-emerald-500/20">
+       <div className="flex items-center gap-4">
+        <div className="size-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center flex-shrink-0 shadow-lg">
+         <span className="material-symbols-outlined text-2xl">pix</span>
+        </div>
+        <div>
+         <h4 className="text-base font-black text-white flex items-center gap-2">
+          <span>{pendingPastAppointments.length} Atendimento(s) de Agosto em Aberto</span>
+          <span className="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Dias 4, 18, 27 e 28</span>
+         </h4>
+         <p className="text-xs text-white/60 mt-0.5">
+          Constam como "Em Atendimento". Clique no botão para registrar a quitação automática com pagamentos em <strong>PIX</strong> no banco de dados e caixa retroativo.
+         </p>
+        </div>
+       </div>
+       <button
+        disabled={quitarLoading}
+        onClick={handleQuitarTodosAugust}
+        className="w-full md:w-auto px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black uppercase tracking-wider text-xs shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+       >
+        <span className="material-symbols-outlined text-base">{quitarLoading ? 'sync' : 'check_circle'}</span>
+        <span>{quitarLoading ? 'Processando Quitação...' : `Quitar Todos via PIX (${pendingPastAppointments.length})`}</span>
+       </button>
+      </div>
+     )}
+
      {loadingApts ? (
       <div className="flex items-center justify-center h-40 text-white/20">
        <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>Carregando...
@@ -1192,6 +1290,19 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
                <div className="flex gap-1 ml-auto opacity-0 group-hover/card:opacity-100 transition-opacity">
                 {apt.status === 'pending' && <button onClick={(e) => {e.stopPropagation(); handleUpdateStatus(apt.id,'confirmed')}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-emerald-500/20 hover:border-emerald-500 hover:text-emerald-400"><span className="material-symbols-outlined" style={{fontSize:15}}>check</span></button>}
                 {apt.status === 'confirmed' && <button onClick={(e) => {e.stopPropagation(); handleUpdateStatus(apt.id,'em_atendimento')}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-indigo-500/20 hover:border-indigo-500 hover:text-indigo-400"><span className="material-symbols-outlined" style={{fontSize:15}}>play_arrow</span></button>}
+                {apt.status === 'em_atendimento' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleUpdateStatus(apt.id, 'pago', 'PIX');
+                    }}
+                    className="h-7 px-2.5 rounded border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 flex items-center gap-1 hover:bg-emerald-500/30 text-[10px] font-black uppercase tracking-wider transition-all shadow-sm"
+                    title="Finalizar e Quitar Atendimento via PIX"
+                  >
+                    <span className="material-symbols-outlined" style={{fontSize: 14}}>pix</span>
+                    <span>Quitar PIX</span>
+                  </button>
+                )}
                 <button onClick={(e) => {e.stopPropagation(); startReschedule(apt)}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-amber-600/20 hover:border-amber-600 hover:text-amber-400"><span className="material-symbols-outlined" style={{fontSize:15}}>edit</span></button>
                 <button onClick={(e) => {e.stopPropagation(); handleCancel(apt)}} className="w-7 h-7 rounded border border-white/[0.08] bg-black/40 text-white/60 flex items-center justify-center hover:bg-red-500/20 hover:border-red-500 hover:text-red-400"><span className="material-symbols-outlined" style={{fontSize:15}}>close</span></button>
                </div>
@@ -1399,6 +1510,40 @@ const DetailedAgenda: React.FC<DetailedAgendaProps> = ({ collaborators = [] }) =
     </div>
    </div>,
    document.body
+  )}
+
+  {/* MODAL DE SUCESSO DA QUITAÇÃO DE AGOSTO */}
+  {quitarSuccessModal && createPortal(
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-300 font-sans">
+      <div className="bg-[#1e293b] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-lg w-full text-center shadow-2xl animate-in zoom-in-95 duration-300 relative overflow-hidden">
+        <div className="size-20 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/10">
+          <span className="material-symbols-outlined text-4xl">check_circle</span>
+        </div>
+        <h3 className="text-2xl font-black text-white uppercase tracking-tight font-bebas">
+          Atendimentos Quitados com Sucesso!
+        </h3>
+        <p className="text-xs text-white/60 font-medium mt-1 leading-relaxed">
+          Foram finalizados <strong>{quitarSuccessModal.count} atendimentos</strong> totalizando <strong>R$ {quitarSuccessModal.total.toFixed(2)}</strong> via PIX registrados no caixa e banco de dados retroativo.
+        </p>
+
+        <div className="mt-4 max-h-52 overflow-y-auto p-3 bg-black/40 rounded-2xl text-left space-y-2 border border-white/5 custom-scrollbar text-xs text-white/80">
+          {quitarSuccessModal.items.map((item, idx) => (
+            <div key={idx} className="flex items-start gap-2 py-1 border-b border-white/[0.04] last:border-0">
+              <span className="text-emerald-400 font-bold text-sm">✓</span>
+              <span className="flex-1">{item}</span>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setQuitarSuccessModal(null)}
+          className="mt-6 w-full py-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black uppercase tracking-wider text-xs shadow-xl shadow-emerald-500/20 active:scale-95 transition-all"
+        >
+          Entendido
+        </button>
+      </div>
+    </div>,
+    document.body
   )}
  </div>
  );

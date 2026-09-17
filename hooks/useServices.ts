@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Database } from '../lib/database.types';
+import { cacheItems, getCachedItems } from '../lib/offlineStorage';
 
 type Service = Database['public']['Tables']['services']['Row'];
 
@@ -29,9 +30,26 @@ export const useServices = () => {
                 .order('title');
 
             if (error) throw error;
-            setServices(data || []);
+            const items = data || [];
+            setServices(items);
+            setError(null);
+
+            if (items.length > 0) {
+                cacheItems('services', items).catch(console.warn);
+            }
         } catch (err: any) {
-            setError(err.message);
+            console.warn('[useServices] Erro ao buscar da nuvem, tentando cache offline...', err);
+            try {
+                const cachedServices = await getCachedItems<ServiceWithPros>('services');
+                if (cachedServices.length > 0) {
+                    setServices(cachedServices);
+                    setError(null);
+                } else {
+                    setError(err.message);
+                }
+            } catch (cacheErr: any) {
+                setError(err.message);
+            }
         } finally {
             setLoading(false);
         }
